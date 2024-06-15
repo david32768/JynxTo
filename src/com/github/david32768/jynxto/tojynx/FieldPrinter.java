@@ -40,18 +40,6 @@ public class FieldPrinter {
                     case ConstantValueAttribute attr -> {
                         var constant = attr.constant().constantValue();
                         switch(constant) {
-//                            case Integer c -> {
-//                                ptr.print(ReservedWord.equals_sign, c);
-//                            }
-//                            case Long c -> {
-//                                ptr.print(ReservedWord.equals_sign, c + "L");
-//                            }
-//                            case Float c -> {
-//                                ptr.print(ReservedWord.equals_sign, Float.toHexString(c) + "f");
-//                            }
-//                            case Double c -> {
-//                                ptr.print(ReservedWord.equals_sign, Double.toHexString(c));
-//                            }
                             case String c -> {
                                 ptr.print(ReservedWord.equals_sign)
                                         .printQuoted(c);

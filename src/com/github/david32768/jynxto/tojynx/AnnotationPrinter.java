@@ -60,7 +60,22 @@ public class AnnotationPrinter {
         ptr.decrDepth().print(Directive.end_annotation).nl();
     }
 
-    void processParameterAnnotation(boolean visible, int index, Annotation attr) {
+    void processParameterAnnotations(boolean visible, List<List<Annotation>> annotations) {
+        if (omit) {
+            return;
+        }
+        Directive dircount = visible? Directive.dir_visible_parameter_count: Directive.dir_invisible_parameter_count;
+        ptr.print(dircount, annotations.size()).nl();
+        int index = 0;
+        for (var annolist : annotations) {
+            for (var anno : annolist) {
+                processParameterAnnotation(visible, index, anno);
+            }
+            ++index;
+        }
+    }
+    
+    private void processParameterAnnotation(boolean visible, int index, Annotation attr) {
         if (omit) {
             return;
         }

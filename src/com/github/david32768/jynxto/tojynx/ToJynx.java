@@ -21,6 +21,7 @@ import java.util.function.Predicate;
 
 import jvm.JvmVersion;
 import jynx.ClassType;
+import jynx.ClassUtil;
 import jynx.Directive;
 import jynx.Global;
 import jynx.LogIllegalArgumentException;
@@ -64,7 +65,6 @@ public class ToJynx {
     } 
 
     public static void toJynx(String file) throws IOException {
-        Path path = Paths.get(file);
         ClassFile classfile;
         if (Global.OPTION(SKIP_DEBUG)) {
             classfile = ClassFile.of(ClassFile.DebugElementsOption.DROP_DEBUG,
@@ -72,7 +72,8 @@ public class ToJynx {
         } else {
             classfile = ClassFile.of();
         }
-        ClassModel cm = classfile.parse(path);
+        byte[] bytes = ClassUtil.getClassBytes(file);
+        ClassModel cm = classfile.parse(bytes);
 
         var version = getVersion(cm);
 

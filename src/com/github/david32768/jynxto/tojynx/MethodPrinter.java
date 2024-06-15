@@ -75,23 +75,11 @@ public class MethodPrinter {
             }
             case RuntimeVisibleParameterAnnotationsAttribute attr -> {
                 AnnotationPrinter ap = new AnnotationPrinter(ptr);
-                int index = 0;
-                for (var annolist : attr.parameterAnnotations()) {
-                    for (var anno : annolist) {
-                        ap.processParameterAnnotation(true, index, anno);
-                    }
-                    ++index;
-                }
+                ap.processParameterAnnotations(true, attr.parameterAnnotations());
             }
             case RuntimeInvisibleParameterAnnotationsAttribute attr -> {
                 AnnotationPrinter ap = new AnnotationPrinter(ptr);
-                int index = 0;
-                for (var annolist : attr.parameterAnnotations()) {
-                    for (var anno : annolist) {
-                        ap.processParameterAnnotation(false, index, anno);
-                    }
-                    ++index;
-                }
+                ap.processParameterAnnotations(false, attr.parameterAnnotations());
             }
             case RuntimeInvisibleAnnotationsAttribute attr -> {
                 AnnotationPrinter ap = new AnnotationPrinter(ptr);

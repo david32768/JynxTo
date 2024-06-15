@@ -344,10 +344,16 @@ public class JynxPrinter {
                 str += "L";
             }
             case Float c -> {
-                str = Float.toHexString(c) + "f";
+                str = Float.toHexString(c) + "F";
+                if (c.isNaN() || c.compareTo(Float.MAX_VALUE) > 0) { // NaN or positive infinity
+                    str = "+" + str;
+                } 
             }
             case Double c -> {
                 str = Double.toHexString(c);
+                if (c.isNaN() || c.compareTo(Double.MAX_VALUE) > 0) { // NaN or positive infinity
+                    str = "+" + str;
+                } 
             }
             default -> {
                 throw new UnsupportedOperationException();
@@ -355,7 +361,7 @@ public class JynxPrinter {
         }
         return str;
     }
-    
+
     private String stringOf(ClassDesc owner) {
         String desc = owner.descriptorString();
         if (!owner.isArray() && !owner.isPrimitive()) {
