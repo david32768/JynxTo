@@ -1,5 +1,7 @@
 package com.github.david32768.jynxto.tojynx;
 
+import static java.lang.classfile.attribute.StackMapFrameInfo.SimpleVerificationTypeInfo.*;
+
 import java.lang.classfile.Attribute;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.TypeAnnotation;
@@ -23,12 +25,6 @@ import java.lang.reflect.AccessFlag;
 import java.util.ArrayList;
 import java.util.List;
 
-import static java.lang.classfile.attribute.StackMapFrameInfo.SimpleVerificationTypeInfo.ITEM_DOUBLE;
-import static java.lang.classfile.attribute.StackMapFrameInfo.SimpleVerificationTypeInfo.ITEM_FLOAT;
-import static java.lang.classfile.attribute.StackMapFrameInfo.SimpleVerificationTypeInfo.ITEM_INTEGER;
-import static java.lang.classfile.attribute.StackMapFrameInfo.SimpleVerificationTypeInfo.ITEM_LONG;
-import static java.lang.classfile.attribute.StackMapFrameInfo.SimpleVerificationTypeInfo.ITEM_UNINITIALIZED_THIS;
-
 import jynx.Directive;
 import jynx.ReservedWord;
 
@@ -39,14 +35,14 @@ public class MethodPrinter {
     private final ClassDesc classDesc;
 
     MethodPrinter(JynxPrinter ptr, ClassDesc classDesc) {
-        this.ptr = ptr;
+        this.ptr = ptr.copy();
         this.classDesc = classDesc;
     }
 
     void process(MethodModel mm) {
         String namedesc = mm.methodName().stringValue() + mm.methodTypeSymbol().descriptorString();
         ptr.nl().print(Directive.dir_method).printAccessName(
-                ToJynx.convertFlags(mm.flags().flags(), mm.attributes()), namedesc).nl();
+                JynxAccessFlags.convert(mm.flags().flags(), mm.attributes()), namedesc).nl();
         ptr.incrDepth();
         for (var attribute : mm.attributes()) {
             processAttribute(attribute);
@@ -114,7 +110,7 @@ public class MethodPrinter {
                 for (var parm : attr.parameters()) {
                     String name = parm.name().map(Utf8Entry::stringValue).orElse("");
                     ptr.print(Directive.dir_parameter, index)
-                            .printAccessName(ToJynx.convertFlags(parm.flags()), name).nl();
+                            .printAccessName(JynxAccessFlags.convert(parm.flags()), name).nl();
                     ++index;
                 }
             }

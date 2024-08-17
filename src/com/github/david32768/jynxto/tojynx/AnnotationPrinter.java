@@ -3,22 +3,23 @@ package com.github.david32768.jynxto.tojynx;
 import java.lang.classfile.Annotation;
 import java.lang.classfile.AnnotationElement;
 import java.lang.classfile.AnnotationValue;
+import java.lang.classfile.attribute.AnnotationDefaultAttribute;
 import java.lang.classfile.Label;
 import java.lang.classfile.TypeAnnotation;
 import java.lang.classfile.TypeAnnotation.TargetInfo;
 import java.lang.classfile.TypeAnnotation.TypePathComponent;
-import java.lang.classfile.attribute.AnnotationDefaultAttribute;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+import static jynx.Global.OPTION;
+import static jynx.GlobalOption.SKIP_ANNOTATIONS;
+
 import jvm.TypeRef;
 import jynx.Directive;
 import jynx.ReservedWord;
 
-import static jynx.Global.OPTION;
-import static jynx.GlobalOption.SKIP_ANNOTATIONS;
 
 public class AnnotationPrinter {
 
@@ -26,7 +27,7 @@ public class AnnotationPrinter {
     private final boolean omit;
 
     AnnotationPrinter(JynxPrinter ptr) {
-        this.ptr = ptr;
+        this.ptr = ptr.copy();
         this.omit = OPTION(SKIP_ANNOTATIONS);
     }
     

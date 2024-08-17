@@ -7,10 +7,6 @@ import java.lang.classfile.attribute.ModulePackagesAttribute;
 import java.util.Map;
 import java.util.Objects;
 
-import jynx.Directive;
-import jynx.LogIllegalArgumentException;
-import jynx.ReservedWord;
-
 import static jynx.Directive.dir_main;
 import static jynx.Directive.dir_module;
 import static jynx.Directive.dir_packages;
@@ -18,12 +14,16 @@ import static jynx.Directive.end_array;
 import static jynx.Directive.end_module;
 import static jynx.Message.M130;
 
+import jynx.Directive;
+import jynx.LogIllegalArgumentException;
+import jynx.ReservedWord;
+
 public class ModulePrinter {
     
     private final JynxPrinter ptr;
 
     ModulePrinter(JynxPrinter ptr) {
-        this.ptr = ptr;
+        this.ptr = ptr.copy();
     }
     
     void process(Map<String, Attribute<?>> moduleAttributes) {
@@ -32,7 +32,7 @@ public class ModulePrinter {
         var name = module.moduleName().name();
         var flags = module.moduleFlags();
         var version = module.moduleVersion();
-        ptr.decrDepth().print(dir_module).printAccessName(ToJynx.convertFlags(flags), name)
+        ptr.print(dir_module).printAccessName(JynxAccessFlags.convert(flags), name)
                 .print(version).nl().incrDepth();
         for( var attribute : moduleAttributes.values()) {
             processAttribute(attribute);
@@ -47,7 +47,7 @@ public class ModulePrinter {
                 var requires = attr.requires();
                 for (var required: requires) {
                     ptr.print(Directive.dir_requires);
-                    var flags = ToJynx.convertFlags(required.requiresFlags());
+                    var flags = JynxAccessFlags.convert(required.requiresFlags());
                     ptr.printAccessName(flags, required.requires().name());
                     ptr.print(required.requiresVersion()).nl();
                 }
@@ -56,7 +56,7 @@ public class ModulePrinter {
                 if (!exports.isEmpty()) {
                     for (var exported : exports) {
                         ptr.print(Directive.dir_exports);
-                        var flags = ToJynx.convertFlags(exported.exportsFlags());
+                        var flags = JynxAccessFlags.convert(exported.exportsFlags());
                         ptr.printAccessName(flags, exported.exportedPackage().name());
                         var to = exported.exportsTo();
                         if (to.isEmpty()) {
@@ -75,7 +75,7 @@ public class ModulePrinter {
                 if (!opens.isEmpty()) {
                     for (var opened : opens) {
                         ptr.print(Directive.dir_opens);
-                        var flags = ToJynx.convertFlags(opened.opensFlags());
+                        var flags = JynxAccessFlags.convert(opened.opensFlags());
                         ptr.printAccessName(flags, opened.openedPackage().name());
                         var to = opened.opensTo();
                         if (to.isEmpty()) {

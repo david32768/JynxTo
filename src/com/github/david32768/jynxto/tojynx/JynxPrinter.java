@@ -1,6 +1,7 @@
 package com.github.david32768.jynxto.tojynx;
 
 import java.lang.classfile.AnnotationValue;
+import java.lang.classfile.Opcode;
 import java.lang.classfile.constantpool.AnnotationConstantValueEntry;
 import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.classfile.constantpool.DynamicConstantPoolEntry;
@@ -25,6 +26,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import static jynx.Message.M911;
+import static jynx.ReservedWordType.LABEL;
+import static jynx.ReservedWordType.NAME;
+import static jynx.ReservedWordType.QUOTED;
+
 import jvm.AccessFlag;
 import jvm.HandleType;
 import jynx.Directive;
@@ -32,11 +38,6 @@ import jynx.LogAssertionError;
 import jynx.ReservedWord;
 import jynx.ReservedWordType;
 import jynx.StringUtil;
-
-import static jynx.Message.M910;
-import static jynx.ReservedWordType.LABEL;
-import static jynx.ReservedWordType.NAME;
-import static jynx.ReservedWordType.QUOTED;
 
 public class JynxPrinter {
     
@@ -46,13 +47,27 @@ public class JynxPrinter {
 
     private final StringBuilder sb;
     private final Consumer<String> consumer;
+    private final int lwm;
     
     private int depth;
 
     public JynxPrinter(Consumer<String> consumer) {
+        this(consumer, 0);
+    }
+    
+    private JynxPrinter(Consumer<String> consumer, int lwm) {
         this.sb = new StringBuilder();
         this.consumer = consumer;
-        this.depth = 0;
+        this.lwm = lwm;
+        this.depth = lwm;
+    }
+    
+    public JynxPrinter copy() {
+        return new JynxPrinter(consumer, depth);
+    }
+    
+    public JynxPrinter nested() {
+        return new JynxPrinter(consumer, depth + 1);
     }
     
     private void startOfLine() {
@@ -70,22 +85,17 @@ public class JynxPrinter {
         }
     }
 
-    public JynxPrinter start(int level) {
-        sb.setLength(0);
-        this.depth = level;
-        return this;
-    }
-
     public JynxPrinter incrDepth() {
         depth += 1;
         return this;
     }
     
     public JynxPrinter decrDepth() {
-        depth -= 1;
-        if (depth < 0) {
-            throw new LogAssertionError(M910); // "indent depth is now negative"
+        if (depth <= lwm) {
+            // "indent depth would be below lower limit %d"
+            throw new LogAssertionError(M911, lwm);
         }
+        depth -= 1;
         return this;
     }
     
@@ -220,6 +230,9 @@ public class JynxPrinter {
             }
             case PoolEntry c -> {
                 print(c);
+            }
+            case Opcode op -> {
+                print(op.name().toLowerCase());
             }
             default -> {
                 printString(object.toString());

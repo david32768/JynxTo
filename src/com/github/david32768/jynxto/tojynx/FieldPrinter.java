@@ -14,23 +14,23 @@ import java.lang.classfile.attribute.SignatureAttribute;
 import java.lang.classfile.attribute.SyntheticAttribute;
 import java.lang.reflect.AccessFlag;
 
+import static jynx.Message.M130;
+
 import jynx.Directive;
 import jynx.LogIllegalArgumentException;
 import jynx.ReservedWord;
-
-import static jynx.Message.M130;
 
 public class FieldPrinter {
 
     private final JynxPrinter ptr;
 
     FieldPrinter(JynxPrinter ptr) {
-        this.ptr = ptr;
+        this.ptr = ptr.copy();
     }
 
 
     void process(FieldModel fm) {
-        var flags = ToJynx.convertFlags(fm.flags().flags(), fm.attributes());
+        var flags = JynxAccessFlags.convert(fm.flags().flags(), fm.attributes());
         ptr.nl().print(Directive.dir_field).printAccessName(flags, fm.fieldName())
                 .print(fm.fieldType());
         var fmflags = fm.flags();

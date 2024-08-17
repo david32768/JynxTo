@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import static jynx.Directive.*;
+import static jynx.Message.M130;
+
 import jvm.Context;
 import jvm.JvmVersion;
 import jvm.StandardAttribute;
@@ -16,24 +19,31 @@ import jynx.ClassType;
 import jynx.LogIllegalArgumentException;
 import jynx.ReservedWord;
 
-import static jynx.Directive.*;
-import static jynx.Message.M130;
-
 public class ClassHeaderPrinter {
     
     private final JynxPrinter ptr;
     private final JvmVersion jvmVersion;
     private final List<RecordComponentInfo> components;
+    private final Map<String, Attribute<?>> moduleAttributes;
 
     ClassHeaderPrinter(JynxPrinter ptr, JvmVersion jvmversion) {
-        this.ptr = ptr;
+        this.ptr = ptr.copy();
         this.jvmVersion = jvmversion;
         this.components = new ArrayList<>();
+        this.moduleAttributes = new TreeMap<>();
     }
 
+    Map<String, Attribute<?>> moduleAttributes() {
+        return Map.copyOf(moduleAttributes);
+    }
+
+    List<RecordComponentInfo> components() {
+        return List.copyOf(components);
+    }
+
+    
     void process(ClassModel cm) {
         processHeader(cm);
-        Map<String, Attribute<?>> moduleAttributes = new TreeMap<>();
         for (var attribute : cm.attributes()) {
             String name = attribute.attributeName();
             var standard = StandardAttribute.getInstance(name);
@@ -48,14 +58,6 @@ public class ClassHeaderPrinter {
                 // "invalid attribute %s"
                 throw new LogIllegalArgumentException(M130, attribute);
             }
-        }
-        var cp = new ComponentPrinter(ptr);
-        for (var component : components) {
-            cp.process(component);
-        }
-        if (cm.isModuleInfo()) {
-            var modptr = new ModulePrinter(ptr);
-            modptr.process(moduleAttributes);
         }
     }
     
@@ -100,7 +102,7 @@ public class ClassHeaderPrinter {
             }
             case InnerClassesAttribute attr -> {
                 for (var inner : attr.classes()) {
-                    var flags = ToJynx.convertFlags(inner.flags());
+                    var flags = JynxAccessFlags.convert(inner.flags());
                     ClassType classtype = ClassType.from(flags);
                     flags.removeAll(classtype.getMustHave4Inner(jvmVersion));
                     var dir = classtype.getInnerDir();

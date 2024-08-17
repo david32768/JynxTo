@@ -8,17 +8,17 @@ import java.lang.classfile.attribute.RuntimeVisibleAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleTypeAnnotationsAttribute;
 import java.lang.classfile.attribute.SignatureAttribute;
 
+import static jynx.Message.M130;
+
 import jynx.Directive;
 import jynx.LogIllegalArgumentException;
-
-import static jynx.Message.M130;
 
 public class ComponentPrinter {
 
     private final JynxPrinter ptr;
 
     ComponentPrinter(JynxPrinter ptr) {
-        this.ptr = ptr;
+        this.ptr = ptr.copy();
     }
 
 
