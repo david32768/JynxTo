@@ -1,7 +1,7 @@
-Requires Java22-preview (java.lang,classfile)
+Requires Java24-ea+14 preview (java.lang.classfile)
 
 Uses java.lang.classfile to produce Jynx file from Java class file.
-After each instruction there is a comment of the current stack.
+After each instruction there is a comment of the current stack state.
 
 Uses module com.github.david32768x.Jynx and hence also requires ASM.
 

@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 
 import com.github.david32768.jynxto.utility.Instructions;
 import com.github.david32768.jynxto.utility.InstructionVisitor;
+import java.util.stream.Stream;
 
 public class TypeKindStack implements InstructionVisitor {
 
@@ -28,7 +29,7 @@ public class TypeKindStack implements InstructionVisitor {
                         top, top.slotSize(), next, next.slotSize());
                 throw new IllegalArgumentException(msg);
             }
-            if (top == TypeKind.VoidType) {
+            if (top == TypeKind.VOID) {
                 String msg = "top TypeKind cannot be VoidType";
                 throw new IllegalArgumentException(msg);
             }
@@ -74,32 +75,23 @@ public class TypeKindStack implements InstructionVisitor {
         }
     }
 
-    public String descriptor() {
-        return astack.stream()
-                .map(t -> t.descriptor())
-                .collect(Collectors.joining("", "(", ")"));
-    }
-    
-    @Override
-    public String toString() {
-        return astack.stream()
-                .map(t -> t.toString())
-                .collect(Collectors.joining(",", "(", ")"));
+    public Stream<TypeKind> stream() {
+        return astack.stream();
     }
     
     private void pushKind(TypeKind typeKind) {
-        if (typeKind == TypeKind.VoidType) {
+        if (typeKind == TypeKind.VOID) {
             return;
         }
         astack.add(typeKind.asLoadable());
     }
     
     private void pushInt() {
-        pushKind(TypeKind.IntType);
+        pushKind(TypeKind.INT);
     }
     
     private void pushReference() {
-        pushKind(TypeKind.ReferenceType);
+        pushKind(TypeKind.REFERENCE);
     }
 
     private void push1(OneSlot oneslot) {
@@ -117,7 +109,7 @@ public class TypeKindStack implements InstructionVisitor {
     }
     
     private void popKind(TypeKind typeKind) {
-        if (typeKind == TypeKind.VoidType) {
+        if (typeKind == TypeKind.VOID) {
             return;
         }
         TypeKind onStack = pop();
@@ -129,11 +121,11 @@ public class TypeKindStack implements InstructionVisitor {
     }
     
     private void popInt() {
-        popKind(TypeKind.IntType);
+        popKind(TypeKind.INT);
     }
     
     private void popReference() {
-        popKind(TypeKind.ReferenceType);
+        popKind(TypeKind.REFERENCE);
     }
     
     private OneSlot pop1() {
@@ -143,7 +135,7 @@ public class TypeKindStack implements InstructionVisitor {
     
     private TwoSlot pop2() {
         var top = pop();
-        var next = top.slotSize() == 2? TypeKind.VoidType: pop();
+        var next = top.slotSize() == 2? TypeKind.VOID: pop();
         return new TwoSlot(top, next);
     }
 
@@ -167,19 +159,22 @@ public class TypeKindStack implements InstructionVisitor {
 
     @Override
     public void branch(Opcode op, BranchInstruction inst) {
-        var kind = op.primaryTypeKind();
-        if (op == Opcode.IFNONNULL) { // early BUG in java.lang.classfile.Opcode
-            kind = TypeKind.ReferenceType;
-        }
         var type = Instructions.BranchType.of(inst);
         switch(type) {
             case COMMAND -> {}
-            case UNARY -> {
-                popKind(kind);
+            case AUNARY -> {
+                popKind(TypeKind.REFERENCE);
             }
-            case BINARY -> {
-                popKind(kind);
-                popKind(kind);
+            case IUNARY -> {
+                popKind(TypeKind.INT);
+            }
+            case ABINARY -> {
+                popKind(TypeKind.REFERENCE);
+                popKind(TypeKind.REFERENCE);
+            }
+            case IBINARY -> {
+                popKind(TypeKind.INT);
+                popKind(TypeKind.INT);
             }
         }
     }
@@ -331,7 +326,7 @@ public class TypeKindStack implements InstructionVisitor {
             case COMPARE -> {
                 popKind(kind);
                 popKind(kind);
-                result = TypeKind.IntType;
+                result = TypeKind.INT;
             }
             case BINARY  -> {
                 popKind(kind);

@@ -1,6 +1,7 @@
 package com.github.david32768.jynxto.stack;
 
 
+import com.github.david32768.jynxto.utility.Instructions;
 import java.lang.classfile.instruction.*;
 
 import java.lang.classfile.CodeElement;
@@ -20,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class StackChecker {
 
@@ -43,7 +45,9 @@ public class StackChecker {
         if (lastGoto) {
             return Optional.empty();
         }
-        var str = stack.toString();
+        var str = stack.stream()
+                .map(t -> t.toString())
+                .collect(Collectors.joining(",", "(", ")"));
         return Optional.of(str);
     }
     
@@ -51,9 +55,18 @@ public class StackChecker {
         if (lastGoto) {
             return Optional.empty();
         }
-        var desc = stack.descriptor();
-        desc = desc.replace("L", "Ljava/lang/Object;");
+        var desc = stack.stream()
+                .map(StackChecker::x)
+                .collect(Collectors.joining("", "(", ")"));
         return Optional.of(desc);
+    }
+    
+    private static String x(TypeKind kind) {
+        return switch(kind.asLoadable()) {
+            case LONG -> "J";
+            case REFERENCE -> "Ljava/lang/Object;";
+            default -> kind.name().substring(0, 1);
+        };
     }
     
     public boolean isJsrTarget(Label target) {
@@ -78,7 +91,7 @@ public class StackChecker {
     public void pseudo(PseudoInstruction pseudo) {
         switch (pseudo) {
             case ExceptionCatch handler -> {
-                var exstack = List.of(TypeKind.ReferenceType);
+                var exstack = List.of(TypeKind.REFERENCE);
                 branch(handler.handler(), exstack);
             }
             case LabelTarget i -> {
@@ -134,14 +147,14 @@ public class StackChecker {
         return switch(type) {
             case StackMapFrameInfo.SimpleVerificationTypeInfo simple -> {
                 yield switch(simple) {
-                    case ITEM_DOUBLE -> TypeKind.DoubleType;
-                    case ITEM_FLOAT -> TypeKind.FloatType;
-                    case ITEM_INTEGER  -> TypeKind.IntType;
-                    case ITEM_LONG  -> TypeKind.LongType;
-                    default -> TypeKind.ReferenceType;
+                    case ITEM_DOUBLE -> TypeKind.DOUBLE;
+                    case ITEM_FLOAT -> TypeKind.FLOAT;
+                    case ITEM_INTEGER  -> TypeKind.INT;
+                    case ITEM_LONG  -> TypeKind.LONG;
+                    default -> TypeKind.REFERENCE;
                 };
             }
-            default -> TypeKind.ReferenceType;
+            default -> TypeKind.REFERENCE;
         };
     }
     
@@ -158,7 +171,7 @@ public class StackChecker {
         
         adjustStackForInstruction(instruction);
         
-        if (op.isUnconditionalBranch()) {
+        if (Instructions.isUnconditional(op)) {
             lastGoto = true;
             stack.clear();
         }
@@ -191,7 +204,7 @@ public class StackChecker {
             }
             case DiscontinuedInstruction.JsrInstruction inst -> {
                 var list = new ArrayList<>(stack.toList());
-                list.add(TypeKind.ReferenceType); // return address
+                list.add(TypeKind.REFERENCE); // return address
                 branch(inst.target(), list);
                 jsrLabels.add(inst.target());
             }

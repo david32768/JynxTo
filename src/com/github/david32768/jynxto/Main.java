@@ -14,7 +14,6 @@ import jynx.MainOption;
 
 import com.github.david32768.jynxto.tojynx.ToJynx;
 
-// .flags classfile.AccessFlags or Set<AccessFlag>>
 public class Main {
 
     public static void main(String[] args) throws IOException {

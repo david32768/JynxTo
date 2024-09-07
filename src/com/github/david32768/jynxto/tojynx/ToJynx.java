@@ -53,7 +53,7 @@ public class ToJynx {
         return classfile;
     }
     
-    private static final AttributeMapper<StackMapTableAttribute> STACK_MAPPER = Attributes.STACK_MAP_TABLE;
+    private static final AttributeMapper<StackMapTableAttribute> STACK_MAPPER = Attributes.stackMapTable();
     
     private static boolean hasStackMap(ClassModel cm) {
         return cm.methods().stream()
@@ -69,7 +69,7 @@ public class ToJynx {
             byte[] bytes = classfile.withOptions(ClassFile.StackMapsOption.GENERATE_STACK_MAPS,
             // PATCH_DEAD_CODE is the default but as it alters the bytecode it is deliberately added
                                     ClassFile.DeadCodeOption.PATCH_DEAD_CODE)
-                    .transform(cm, ct);
+                    .transformClass(cm, ct);
             return Optional.of(classfile.parse(bytes));
         } catch (IllegalArgumentException ex) {
             String msg = ex.getMessage();

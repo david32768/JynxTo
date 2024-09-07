@@ -40,13 +40,13 @@ public class Instructions {
 
     public enum BranchType {
         COMMAND(GOTO, GOTO_W),
-        UNARY(IFEQ, IFNE, IFLT, IFGT, IFLE, IFGE,
-                IFNULL, IFNONNULL),
-        BINARY(IF_ICMPEQ, IF_ICMPNE, IF_ICMPLT, IF_ICMPGT, IF_ICMPGE, IF_ICMPLE,
-                IF_ACMPEQ, IF_ACMPNE),
+        AUNARY(IFNULL, IFNONNULL),
+        IUNARY(IFEQ, IFNE, IFLT, IFGT, IFLE, IFGE),
+        ABINARY(IF_ACMPEQ, IF_ACMPNE),
+        IBINARY(IF_ICMPEQ, IF_ICMPNE, IF_ICMPLT, IF_ICMPGT, IF_ICMPGE, IF_ICMPLE),
         ;
 
-       private final EnumSet<Opcode> opcodes;
+        private final EnumSet<Opcode> opcodes;
 
         private BranchType(Opcode opcode1, Opcode... opcodes) {
             this.opcodes = EnumSet.of(opcode1, opcodes);
@@ -59,8 +59,15 @@ public class Instructions {
                     .findAny()
                     .orElseThrow();
             
-         }
+        }
         
     }
     
+    private static final EnumSet<Opcode> UNCONDITIONAL = EnumSet.of(GOTO, GOTO_W,
+            TABLESWITCH, LOOKUPSWITCH, ATHROW,
+            ARETURN, IRETURN , LRETURN, FRETURN, DRETURN, RETURN);
+    
+    public static boolean isUnconditional(Opcode op) {
+        return UNCONDITIONAL.contains(op);
+    }
 }
