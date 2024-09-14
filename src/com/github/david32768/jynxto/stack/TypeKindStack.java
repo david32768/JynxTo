@@ -10,11 +10,10 @@ import java.lang.classfile.TypeKind;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.github.david32768.jynxto.utility.Instructions;
 import com.github.david32768.jynxto.utility.InstructionVisitor;
-import java.util.stream.Stream;
 
 public class TypeKindStack implements InstructionVisitor {
 

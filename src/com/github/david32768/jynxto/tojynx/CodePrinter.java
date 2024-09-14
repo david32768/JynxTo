@@ -24,9 +24,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import static jynx.Global.LOG;
 import static jynx.Message.M137;
-import static jynx.Message.M311;
+import static jynx.Message.M167;
+import static jynx.Message.M339;
 
+import jvm.Context;
 import jvm.FrameType;
 import jynx.Directive;
 import jynx.Global;
@@ -36,6 +39,7 @@ import jynx.ReservedWord;
 
 import com.github.david32768.jynxto.stack.StackChecker;
 import com.github.david32768.jynxto.utility.InstructionVisitor;
+import com.github.david32768.jynxto.utility.UnknownAttributes;
 
 public class CodePrinter {
 
@@ -88,8 +92,6 @@ public class CodePrinter {
         ptr.incrDepth();
         process(cm.attributes(), cm.elementList());
         ptr.decrDepth();
-        ptr.print(Directive.dir_limit, ReservedWord.res_locals, cm.maxLocals()).nl();
-        ptr.print(Directive.dir_limit, ReservedWord.res_stack, cm.maxStack()).nl();
     }
     
     public static void printElements(Consumer<String> consumer, List<CodeElement> elements) {
@@ -143,8 +145,7 @@ public class CodePrinter {
                 }
             }
             default -> {
-                ptr.print("; code attribute", attribute).nl();
-                assert false;
+                UnknownAttributes.unknown(attribute, Context.CODE);
             }
         }
     }
@@ -205,8 +206,8 @@ public class CodePrinter {
                 varAnnotations.add(type);
             }
             default -> {
-                ptr.print("; type annotation info ", target).nl();
-                assert false;
+                // "type annotation %s not known"
+                LOG(M167,target);
             }
         }
     }
@@ -342,8 +343,8 @@ public class CodePrinter {
         assert size > 0;
         offset += size;
         if (offset > MAXSIZE) {
-            // "maximum code size exceeded"
-            throw new LogIllegalArgumentException(M311);
+            // "maximum code size of %d exceeded; current size = [%d,%d]"
+            throw new LogIllegalArgumentException(M339, MAXSIZE, offset, offset);
         }
     }
 

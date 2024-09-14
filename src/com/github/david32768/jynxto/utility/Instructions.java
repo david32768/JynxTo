@@ -62,6 +62,9 @@ public class Instructions {
         }
         
     }
+
+    private Instructions() {}
+
     
     private static final EnumSet<Opcode> UNCONDITIONAL = EnumSet.of(GOTO, GOTO_W,
             TABLESWITCH, LOOKUPSWITCH, ATHROW,

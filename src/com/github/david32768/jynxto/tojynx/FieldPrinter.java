@@ -14,11 +14,13 @@ import java.lang.classfile.attribute.SignatureAttribute;
 import java.lang.classfile.attribute.SyntheticAttribute;
 import java.lang.reflect.AccessFlag;
 
-import static jynx.Message.M130;
+import static jynx.Message.M174;
 
+import jvm.Context;
 import jynx.Directive;
-import jynx.LogIllegalArgumentException;
 import jynx.ReservedWord;
+
+import com.github.david32768.jynxto.utility.UnknownAttributes;
 
 public class FieldPrinter {
 
@@ -96,15 +98,18 @@ public class FieldPrinter {
                 case ConstantValueAttribute _ -> {
                     ++ignoredCount;
                 }
-                case SyntheticAttribute _ -> {
+                case SyntheticAttribute attr -> {
+                    // "%s is omitted as pseudo_access flag %s is used"
+                    ptr.comment(M174, attr, jvm.AccessFlag.acc_synthetic).nl();
                     ++ignoredCount;
                 }
-                case DeprecatedAttribute _ -> {
+                case DeprecatedAttribute attr -> {
+                    // "%s is omitted as pseudo_access flag %s is used"
+                    ptr.comment(M174, attr, jvm.AccessFlag.acc_deprecated).nl();
                     ++ignoredCount;
                 }
                 default -> {
-                    // "unknown attribute %s"
-                    throw new LogIllegalArgumentException(M130);
+                    UnknownAttributes.unknown(attribute, Context.FIELD);
                 }
             }
         }

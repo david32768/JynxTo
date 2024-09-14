@@ -25,8 +25,13 @@ import java.lang.reflect.AccessFlag;
 import java.util.ArrayList;
 import java.util.List;
 
+import static jynx.Message.M174;
+
+import jvm.Context;
 import jynx.Directive;
 import jynx.ReservedWord;
+
+import com.github.david32768.jynxto.utility.UnknownAttributes;
 
 public class MethodPrinter {
     
@@ -115,11 +120,16 @@ public class MethodPrinter {
                 }
             }
             case CodeAttribute _ -> {}
-            case SyntheticAttribute _ -> {}
-            case DeprecatedAttribute _ -> {}
+            case SyntheticAttribute attr -> {
+                // "%s is omitted as pseudo_access flag %s is used"
+                ptr.comment(M174, attr, jvm.AccessFlag.acc_synthetic).nl();
+            }
+            case DeprecatedAttribute attr -> {
+                // "%s is omitted as pseudo_access flag %s is used"
+                ptr.comment(M174, attr, jvm.AccessFlag.acc_deprecated).nl();
+            }
             default -> {
-                ptr.print("; attribute", attribute).nl();
-                assert false;
+                UnknownAttributes.unknown(attribute, Context.METHOD);
             }
         }
     }

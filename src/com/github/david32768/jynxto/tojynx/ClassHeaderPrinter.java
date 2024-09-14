@@ -6,35 +6,28 @@ import java.lang.classfile.attribute.*;
 import java.lang.classfile.TypeAnnotation;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 
 import static jynx.Directive.*;
-import static jynx.Message.M130;
+import static jynx.Message.M174;
 
+import jvm.AccessFlag;
 import jvm.Context;
 import jvm.JvmVersion;
-import jvm.StandardAttribute;
 import jynx.ClassType;
-import jynx.LogIllegalArgumentException;
 import jynx.ReservedWord;
+
+import com.github.david32768.jynxto.utility.UnknownAttributes;
 
 public class ClassHeaderPrinter {
     
-    private final JynxPrinter ptr;
+    protected final JynxPrinter ptr;
     private final JvmVersion jvmVersion;
     private final List<RecordComponentInfo> components;
-    private final Map<String, Attribute<?>> moduleAttributes;
 
     ClassHeaderPrinter(JynxPrinter ptr, JvmVersion jvmversion) {
         this.ptr = ptr.copy();
         this.jvmVersion = jvmversion;
         this.components = new ArrayList<>();
-        this.moduleAttributes = new TreeMap<>();
-    }
-
-    Map<String, Attribute<?>> moduleAttributes() {
-        return Map.copyOf(moduleAttributes);
     }
 
     List<RecordComponentInfo> components() {
@@ -43,25 +36,18 @@ public class ClassHeaderPrinter {
 
     
     void process(ClassModel cm) {
+        ptr.incrDepth();
         processHeader(cm);
         for (var attribute : cm.attributes()) {
-            String name = attribute.attributeName();
-            var standard = StandardAttribute.getInstance(name);
-            if (standard == null) {
-                // "unknown attribute %s"
-                throw new LogIllegalArgumentException(M130, attribute);
-            } else if (standard.inContext(Context.CLASS)) {
-                processClassAttribute(attribute);
-            } else if (cm.isModuleInfo() && standard.inContext(Context.MODULE)) {
-                moduleAttributes.put(name,attribute);
-            } else {
-                // "invalid attribute %s"
-                throw new LogIllegalArgumentException(M130, attribute);
+            boolean processed = processClassAttribute(attribute);
+            if(!processed) {
+                UnknownAttributes.unknown(attribute, Context.CLASS);
             }
         }
+        ptr.decrDepth();
     }
     
-    private void processClassAttribute(Attribute<?> attribute) {
+    protected boolean processClassAttribute(Attribute<?> attribute) {
         switch(attribute) {
             case SourceFileAttribute attr -> {
                 ptr.print(dir_source, attr.sourceFile()).nl();
@@ -142,16 +128,23 @@ public class ClassHeaderPrinter {
                     ap.processRuntimeTypeAnnotation(true, (TypeAnnotation)annotation);
                 }
             }
-            case DeprecatedAttribute _ -> {}
+            case SyntheticAttribute attr -> {
+                // "%s is omitted as pseudo_access flag %s is used"
+                ptr.comment(M174, attr, jvm.AccessFlag.acc_synthetic).nl();
+            }
+            case DeprecatedAttribute attr -> {
+                // "%s is omitted as pseudo_access flag %s is used"
+                ptr.comment(M174, attr, AccessFlag.acc_deprecated).nl();
+            }
             case RecordAttribute attr -> {
                 components.addAll(attr.components());
             }
             case BootstrapMethodsAttribute _ -> {}
             default -> {
-                // "invalid attribute %s"
-                throw new LogIllegalArgumentException(M130, attribute);
+                return false;
             }
         }
+        return true;
     }
     
     private void processHeader(ClassModel cm) {

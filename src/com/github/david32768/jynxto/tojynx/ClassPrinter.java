@@ -45,10 +45,8 @@ public class ClassPrinter {
     }
     
     private void processClass(ClassModel cm) {
-        ptr.incrDepth();
         ClassHeaderPrinter chp = new ClassHeaderPrinter(ptr, jvmVersion);
         chp.process(cm);
-        ptr.decrDepth();
         for (var component : chp.components()) {
             var cp = new ComponentPrinter(ptr);
             cp.process(component);
@@ -64,11 +62,7 @@ public class ClassPrinter {
     }
 
     private void processModuleInfo(ClassModel cm) {
-        ptr.incrDepth();
-        ClassHeaderPrinter chp = new ClassHeaderPrinter(ptr, jvmVersion);
-        chp.process(cm);
-        ptr.decrDepth();
-        var modptr = new ModulePrinter(ptr);
-        modptr.process(chp.moduleAttributes());
+        var modptr = new ModulePrinter(ptr, jvmVersion);
+        modptr.process(cm);
     }
 }

@@ -8,10 +8,10 @@ import java.lang.classfile.attribute.RuntimeVisibleAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleTypeAnnotationsAttribute;
 import java.lang.classfile.attribute.SignatureAttribute;
 
-import static jynx.Message.M130;
-
+import jvm.Context;
 import jynx.Directive;
-import jynx.LogIllegalArgumentException;
+
+import com.github.david32768.jynxto.utility.UnknownAttributes;
 
 public class ComponentPrinter {
 
@@ -55,8 +55,7 @@ public class ComponentPrinter {
                     }
                 }
                 default -> {
-                    // "unknown attribute %s"
-                    throw new LogIllegalArgumentException(M130);
+                    UnknownAttributes.unknown(attribute, Context.COMPONENT);
                 }
             }
         }

@@ -35,6 +35,8 @@ import jvm.AccessFlag;
 import jvm.HandleType;
 import jynx.Directive;
 import jynx.LogAssertionError;
+import jynx.LogMsgType;
+import jynx.Message;
 import jynx.ReservedWord;
 import jynx.ReservedWordType;
 import jynx.StringUtil;
@@ -140,7 +142,17 @@ public class JynxPrinter {
         return this;
     }
 
-    private  void print(ReservedWord res, Object value) {
+    public JynxPrinter comment(Message msg, Object... objs) {
+        assert msg.getLogtype() == LogMsgType.INFO;
+        sep();
+        sb.append(';');
+        sep();
+        String comment = msg.format(objs);
+        sb.append(StringUtil.printable(comment));
+        return this;
+    }
+        
+    private void print(ReservedWord res, Object value) {
         if (value instanceof Optional optvalue) {
             assert res.isOptional();
             if (optvalue.isEmpty()) {
@@ -156,7 +168,7 @@ public class JynxPrinter {
             printString(stringify(rwtype,value));
         }
     }
-    
+
     private String stringify(ReservedWordType rwtype, Object obj) {
         String string;
         switch (obj) {
@@ -338,11 +350,11 @@ public class JynxPrinter {
             case AnnotationValue.OfBoolean val -> {
                 printString(val.booleanValue()?"true":"false");
             }
-            case AnnotationValue.OfCharacter val -> {
+            case AnnotationValue.OfChar val -> {
                 printString("'" + StringUtil.escapeChar(val.charValue()) + "'");
             }
             default -> {
-                printConstant(value.constantValue());
+                printConstant(value.constant().constantValue());
             }
         }
     }

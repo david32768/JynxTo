@@ -1,32 +1,53 @@
 package com.github.david32768.jynxto.tojynx;
 
+import com.github.david32768.jynxto.utility.UnknownAttributes;
 import java.lang.classfile.Attribute;
+import java.lang.classfile.ClassModel;
 import java.lang.classfile.attribute.ModuleAttribute;
 import java.lang.classfile.attribute.ModuleMainClassAttribute;
 import java.lang.classfile.attribute.ModulePackagesAttribute;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 
-import static jynx.Directive.dir_main;
-import static jynx.Directive.dir_module;
-import static jynx.Directive.dir_packages;
-import static jynx.Directive.end_array;
-import static jynx.Directive.end_module;
-import static jynx.Message.M130;
+import static jynx.Directive.*;
 
+import jvm.Context;
+import jvm.JvmVersion;
+import jvm.StandardAttribute;
 import jynx.Directive;
-import jynx.LogIllegalArgumentException;
 import jynx.ReservedWord;
 
-public class ModulePrinter {
-    
-    private final JynxPrinter ptr;
 
-    ModulePrinter(JynxPrinter ptr) {
-        this.ptr = ptr.copy();
+public class ModulePrinter extends ClassHeaderPrinter {
+    
+    private final Map<String, Attribute<?>> moduleAttributes;
+
+    ModulePrinter(JynxPrinter ptr, JvmVersion jvmversion) {
+        super(ptr, jvmversion);
+        this.moduleAttributes = new TreeMap<>();
     }
     
-    void process(Map<String, Attribute<?>> moduleAttributes) {
+    @Override
+    void process(ClassModel cm) {
+        ptr.incrDepth();
+        for (var attribute : cm.attributes()) {
+            String name = attribute.attributeName();
+            var standard = StandardAttribute.getInstance(name);
+            if (standard != null && standard.inContext(Context.CLASS) && standard.inContext(Context.MODULE)) {
+                boolean processed = processClassAttribute(attribute);
+                if(!processed) {
+                    UnknownAttributes.unknown(attribute, Context.MODULE);
+                }
+            } else {
+                moduleAttributes.put(name,attribute);
+            }                
+        }
+        ptr.decrDepth();
+        processModuleInfo();
+    }
+    
+    private void processModuleInfo() {
         var module = (ModuleAttribute)moduleAttributes.get("Module");
         Objects.nonNull(module);
         var name = module.moduleName().name();
@@ -127,8 +148,7 @@ public class ModulePrinter {
                 ptr.decrDepth().print(end_array).nl();
             }
             default -> {
-                // "unknown attribute = %s"
-                throw new LogIllegalArgumentException(M130);
+                UnknownAttributes.unknown(attribute, Context.MODULE);
             }            
         }
     }

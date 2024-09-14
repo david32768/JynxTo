@@ -27,6 +27,7 @@ import jynx.Directive;
 import jynx.ReservedWord;
 
 import com.github.david32768.jynxto.utility.AbstractOpcodeVisitor;
+import jvm.NumType;
 
 public class InstructionPrinter extends AbstractOpcodeVisitor {
 
@@ -169,7 +170,7 @@ public class InstructionPrinter extends AbstractOpcodeVisitor {
 
     @Override
     public void newPrimitiveArray(Opcode op, NewPrimitiveArrayInstruction inst) {
-        String type = inst.typeKind().descriptor();
+        String type = NumType.getInstance(inst.typeKind().newarrayCode()).classType();
         ptr.print(op, type).nl();                
     }
 

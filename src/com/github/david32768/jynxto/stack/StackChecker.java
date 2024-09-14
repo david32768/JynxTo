@@ -1,7 +1,6 @@
 package com.github.david32768.jynxto.stack;
 
 
-import com.github.david32768.jynxto.utility.Instructions;
 import java.lang.classfile.instruction.*;
 
 import java.lang.classfile.CodeElement;
@@ -22,6 +21,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import com.github.david32768.jynxto.utility.Instructions;
 
 public class StackChecker {
 
