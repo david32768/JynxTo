@@ -20,6 +20,7 @@ import jvm.Context;
 import jynx.Directive;
 import jynx.ReservedWord;
 
+import com.github.david32768.jynxto.jynx.AccessName;
 import com.github.david32768.jynxto.utility.UnknownAttributes;
 
 public class FieldPrinter {
@@ -32,9 +33,8 @@ public class FieldPrinter {
 
 
     void process(FieldModel fm) {
-        var flags = JynxAccessFlags.convert(fm.flags().flags(), fm.attributes());
-        ptr.nl().print(Directive.dir_field).printAccessName(flags, fm.fieldName())
-                .print(fm.fieldType());
+        var accessName = AccessName.of(fm);
+        ptr.nl().print(Directive.dir_field, accessName, fm.fieldType());
         var fmflags = fm.flags();
         if (fmflags.has(AccessFlag.STATIC) && fmflags.has(AccessFlag.FINAL)) {
             for (var attribute: fm.attributes()) {

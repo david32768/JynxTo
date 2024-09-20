@@ -1,5 +1,7 @@
 package com.github.david32768.jynxto.tojynx;
 
+import com.github.david32768.jynxto.jynx.AccessName;
+import com.github.david32768.jynxto.jynx.DirectiveAccessName;
 import java.lang.classfile.AnnotationValue;
 import java.lang.classfile.Opcode;
 import java.lang.classfile.constantpool.AnnotationConstantValueEntry;
@@ -33,7 +35,6 @@ import static jynx.ReservedWordType.QUOTED;
 
 import jvm.AccessFlag;
 import jvm.HandleType;
-import jynx.Directive;
 import jynx.LogAssertionError;
 import jynx.LogMsgType;
 import jynx.Message;
@@ -72,21 +73,6 @@ public class JynxPrinter {
         return new JynxPrinter(consumer, depth + 1);
     }
     
-    private void startOfLine() {
-        int indent = DEPTH_UNDENT * depth;
-        for (int i = 0; i < indent;++i) {
-            sb.append(TOKEN_SEPARATOR);
-        }
-    }
-    
-    private void sep() {
-        if (sb.isEmpty()) {
-            startOfLine();
-        } else if (sb.charAt(sb.length() - 1) != TOKEN_SEPARATOR) {
-            sb.append(TOKEN_SEPARATOR);
-        }
-    }
-
     public JynxPrinter incrDepth() {
         depth += 1;
         return this;
@@ -100,12 +86,7 @@ public class JynxPrinter {
         depth -= 1;
         return this;
     }
-    
-    private void printString(String string) {
-        sep();
-        sb.append(StringUtil.visible(string));
-    }
-    
+
     public JynxPrinter print(Object... objs) {
         ReservedWord res = null;
         for (var object : objs) {
@@ -119,9 +100,9 @@ public class JynxPrinter {
                 print(res, object);
                 res = null;
             } else {
+                assert wasRW && isRW;
                 print(res);
-                print(object);
-                res = null;
+                res = (ReservedWord)object;
             }
         }
         if (res != null) {
@@ -130,6 +111,44 @@ public class JynxPrinter {
         return this;
     }
     
+    public JynxPrinter print(Object object) {
+        Objects.requireNonNull(object);
+        switch(object) {
+            case Optional opt  -> {
+                if (opt.isPresent()) {
+                    print(opt.get());
+                }
+            }
+            case DynamicCallSiteDesc c -> {
+                printDynamic(c.invocationName(), c.invocationType().descriptorString(),
+                        c.bootstrapMethod(), c.bootstrapArgs());
+            }
+            case ConstantDesc c -> {
+                printConstant(c);
+            }
+            case AnnotationValue.OfConstant val -> {
+                print(val);
+            }
+            case PoolEntry c -> {
+                print(c);
+            }
+            case Opcode op -> {
+                printString(op.name().toLowerCase());
+            }
+            case AccessName an -> {
+                printAccessName(an.flags(), an.name());
+            }
+            case DirectiveAccessName dan -> {
+                printString(dan.dir().toString());
+                printAccessName(dan.flags(), dan.name());
+            }
+            default -> {
+                printString(object.toString());
+            }
+        }
+        return this;
+    }
+
     public JynxPrinter printQuoted(String str) {
         printString(StringUtil.QuoteEscape(str));
         return this;
@@ -152,6 +171,31 @@ public class JynxPrinter {
         return this;
     }
         
+    private void printAccessName(Set<AccessFlag> flags, Optional<CharSequence> name) {
+        printFlags(flags);
+        name.ifPresent(this::printName);
+    }
+    
+    private void printString(String string) {
+        sep();
+        sb.append(StringUtil.visible(string));
+    }
+    
+    private void startOfLine() {
+        int indent = DEPTH_UNDENT * depth;
+        for (int i = 0; i < indent;++i) {
+            sb.append(TOKEN_SEPARATOR);
+        }
+    }
+    
+    private void sep() {
+        if (sb.isEmpty()) {
+            startOfLine();
+        } else if (sb.charAt(sb.length() - 1) != TOKEN_SEPARATOR) {
+            sb.append(TOKEN_SEPARATOR);
+        }
+    }
+
     private void print(ReservedWord res, Object value) {
         if (value instanceof Optional optvalue) {
             assert res.isOptional();
@@ -193,64 +237,14 @@ public class JynxPrinter {
         }
     }
     
-    public JynxPrinter println(Directive dir, Optional<?> value) {
-        if (value.isPresent()) {
-            print(dir, value.get()).nl();
-        }
-        return this;
-    }
-
-    public JynxPrinter printAccessName(Set<AccessFlag> flags, CharSequence name) {
-        printFlags(flags);
-        if (!name.isEmpty()) {
-            printName(name.toString());
-        }
-        return this;
-    }
-    
     private void printFlags(Set<AccessFlag> flags) {
         for (var flag : flags) {
-            String flagName = flag.toString().toLowerCase();
-            if (flagName.equals("strict")) {
-                flagName = "fpstrict";
-            }
-            printString(flagName);
+            printString(flag.toString());
         }
     }
     
-    private void printName(String name) {
-        printString(StringUtil.escapeName(name));
-    }
-
-    public JynxPrinter print(Object object) {
-        Objects.requireNonNull(object);
-        switch(object) {
-            case Optional opt  -> {
-                if (opt.isPresent()) {
-                    print(opt.get());
-                }
-            }
-            case DynamicCallSiteDesc c -> {
-                printDynamic(c.invocationName(), c.invocationType().descriptorString(),
-                        c.bootstrapMethod(), c.bootstrapArgs());
-            }
-            case ConstantDesc c -> {
-                printConstant(c);
-            }
-            case AnnotationValue.OfConstant val -> {
-                print(val);
-            }
-            case PoolEntry c -> {
-                print(c);
-            }
-            case Opcode op -> {
-                print(op.name().toLowerCase());
-            }
-            default -> {
-                printString(object.toString());
-            }
-        }
-        return this;
+    private void printName(CharSequence name) {
+        printString(StringUtil.escapeName(name.toString()));
     }
 
     private void printConstant(ConstantDesc cd) {
@@ -289,10 +283,10 @@ public class JynxPrinter {
                 printString(c.stringValue());
             }
             case AnnotationConstantValueEntry e -> {
-                throw new UnsupportedOperationException();
+                throw new UnsupportedOperationException("" + e);
             }
             case DynamicConstantPoolEntry e -> {
-                throw new UnsupportedOperationException();
+                throw new UnsupportedOperationException("" + e);
             }
             case ClassEntry c -> { // print without L; unlike LoadableConstantEntry
                 printString(c.asInternalName());
@@ -320,7 +314,7 @@ public class JynxPrinter {
                 printString(e.name().stringValue());
             }
              case NameAndTypeEntry e -> {
-                throw new UnsupportedOperationException();
+                throw new UnsupportedOperationException("" + e);
             }
             case PackageEntry e -> {
                 printString(e.name().stringValue());

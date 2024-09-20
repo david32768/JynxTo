@@ -5,10 +5,12 @@ import java.lang.classfile.ClassModel;
 import static jynx.Global.OPTIONS;
 
 import jvm.JvmVersion;
-import jynx.ClassType;
 import jynx.Directive;
 import jynx.GlobalOption;
 import jynx.MainOption;
+
+import com.github.david32768.jynxto.jynx.AccessName;
+import com.github.david32768.jynxto.jynx.DirectiveAccessName;
 
 public class ClassPrinter {
     
@@ -29,17 +31,13 @@ public class ClassPrinter {
                 .forEach(ptr::print);
         ptr.nl();
 
-        var flags = JynxAccessFlags.convert(cm.flags().flags(), cm.attributes());
-        ClassType classtype = ClassType.from(flags);
-        flags.removeAll(classtype.getMustHave4Class(jvmVersion));
-        Directive dir = classtype.getDir();
-        String name = cm.thisClass().asInternalName();
+        var dirAccessName = DirectiveAccessName.of(cm,jvmVersion);
+
         if (cm.isModuleInfo()) {
-            assert name.equals("module-info");
-            ptr.print(dir).printAccessName(flags, "").nl();
+            ptr.print(dirAccessName).nl();
             processModuleInfo(cm);
         } else {
-            ptr.print(dir).printAccessName(flags, name).nl();
+            ptr.print(dirAccessName).nl();
             processClass(cm);
         }
     }

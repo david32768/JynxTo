@@ -31,6 +31,7 @@ import jvm.Context;
 import jynx.Directive;
 import jynx.ReservedWord;
 
+import com.github.david32768.jynxto.jynx.AccessName;
 import com.github.david32768.jynxto.utility.UnknownAttributes;
 
 public class MethodPrinter {
@@ -45,10 +46,10 @@ public class MethodPrinter {
     }
 
     void process(MethodModel mm) {
-        String namedesc = mm.methodName().stringValue() + mm.methodTypeSymbol().descriptorString();
-        ptr.nl().print(Directive.dir_method).printAccessName(
-                JynxAccessFlags.convert(mm.flags().flags(), mm.attributes()), namedesc).nl();
-        ptr.incrDepth();
+        var accessName = AccessName.of(mm);        
+        ptr.nl()
+                .print(Directive.dir_method, accessName).nl()
+                .incrDepth();
         for (var attribute : mm.attributes()) {
             processAttribute(attribute);
         }
@@ -113,9 +114,8 @@ public class MethodPrinter {
             case MethodParametersAttribute attr -> {
                 int index = 0;
                 for (var parm : attr.parameters()) {
-                    String name = parm.name().map(Utf8Entry::stringValue).orElse("");
-                    ptr.print(Directive.dir_parameter, index)
-                            .printAccessName(JynxAccessFlags.convert(parm.flags()), name).nl();
+                    var accessName = AccessName.of(parm);
+                    ptr.print(Directive.dir_parameter, index, accessName).nl();
                     ++index;
                 }
             }

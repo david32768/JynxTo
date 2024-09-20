@@ -1,5 +1,6 @@
 package com.github.david32768.jynxto.tojynx;
 
+import com.github.david32768.jynxto.jynx.AccessName;
 import com.github.david32768.jynxto.utility.UnknownAttributes;
 import java.lang.classfile.Attribute;
 import java.lang.classfile.ClassModel;
@@ -50,11 +51,10 @@ public class ModulePrinter extends ClassHeaderPrinter {
     private void processModuleInfo() {
         var module = (ModuleAttribute)moduleAttributes.get("Module");
         Objects.nonNull(module);
-        var name = module.moduleName().name();
-        var flags = module.moduleFlags();
         var version = module.moduleVersion();
-        ptr.print(dir_module).printAccessName(JynxAccessFlags.convert(flags), name)
-                .print(version).nl().incrDepth();
+        var accessName = AccessName.of(module);
+        ptr.print(dir_module, accessName, version).nl()
+                .incrDepth();
         for( var attribute : moduleAttributes.values()) {
             processAttribute(attribute);
         }
@@ -67,47 +67,41 @@ public class ModulePrinter extends ClassHeaderPrinter {
 
                 var requires = attr.requires();
                 for (var required: requires) {
-                    ptr.print(Directive.dir_requires);
-                    var flags = JynxAccessFlags.convert(required.requiresFlags());
-                    ptr.printAccessName(flags, required.requires().name());
-                    ptr.print(required.requiresVersion()).nl();
+                    var accessName = AccessName.of(required);
+                    ptr.print(Directive.dir_requires, accessName, required.requiresVersion()).nl();
                 }
 
                 var exports = attr.exports();
                 if (!exports.isEmpty()) {
                     for (var exported : exports) {
-                        ptr.print(Directive.dir_exports);
-                        var flags = JynxAccessFlags.convert(exported.exportsFlags());
-                        ptr.printAccessName(flags, exported.exportedPackage().name());
+                        var accessName = AccessName.of(exported);
+                        ptr.print(Directive.dir_exports, accessName);
                         var to = exported.exportsTo();
-                        if (to.isEmpty()) {
-                            ptr.nl();
-                        } else {
+                        if (!to.isEmpty()) {
                             ptr.print(ReservedWord.res_to, ReservedWord.dot_array).nl().incrDepth();
                             for (var tomod : to) {
                                 ptr.print(tomod).nl();
                             }
-                            ptr.decrDepth().print(end_array).nl();
+                            ptr.decrDepth().print(end_array);
                         }
+                        ptr.nl();
                     }
                 }
 
                 var opens = attr.opens();
                 if (!opens.isEmpty()) {
                     for (var opened : opens) {
-                        ptr.print(Directive.dir_opens);
-                        var flags = JynxAccessFlags.convert(opened.opensFlags());
-                        ptr.printAccessName(flags, opened.openedPackage().name());
+                        var accessName = AccessName.of(opened);
+                        ptr.print(Directive.dir_opens, accessName);
                         var to = opened.opensTo();
-                        if (to.isEmpty()) {
-                            ptr.nl();
-                        } else {
+                        if (!to.isEmpty()) {
                             ptr.print(ReservedWord.res_to, ReservedWord.dot_array).nl().incrDepth();
                             for (var tomod : to) {
                                 ptr.print(tomod).nl();
                             }
-                            ptr.decrDepth().print(end_array).nl();
+                            ptr.decrDepth().print(end_array);
                         }
+                        ptr.nl();
                     }
                 }
 

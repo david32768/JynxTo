@@ -13,9 +13,10 @@ import static jynx.Message.M174;
 import jvm.AccessFlag;
 import jvm.Context;
 import jvm.JvmVersion;
-import jynx.ClassType;
 import jynx.ReservedWord;
 
+import com.github.david32768.jynxto.jynx.AccessName;
+import com.github.david32768.jynxto.jynx.DirectiveAccessName;
 import com.github.david32768.jynxto.utility.UnknownAttributes;
 
 public class ClassHeaderPrinter {
@@ -88,16 +89,10 @@ public class ClassHeaderPrinter {
             }
             case InnerClassesAttribute attr -> {
                 for (var inner : attr.classes()) {
-                    var flags = JynxAccessFlags.convert(inner.flags());
-                    ClassType classtype = ClassType.from(flags);
-                    flags.removeAll(classtype.getMustHave4Inner(jvmVersion));
-                    var dir = classtype.getInnerDir();
-                    var innerClass = inner.innerClass();
-                    var innerName = inner.innerName();
-                    var outerClass = inner.outerClass();
-                    ptr.print(dir).printAccessName(flags, innerClass.asInternalName())
-                        .print(ReservedWord.res_outer, outerClass)
-                        .print(ReservedWord.res_innername, innerName)
+                    var dirAccessName = DirectiveAccessName.of(inner, jvmVersion);
+                    ptr.print(dirAccessName,
+                        ReservedWord.res_outer, inner.outerClass(),
+                        ReservedWord.res_innername, inner.innerName())
                         .nl();
                 }
             }
@@ -148,7 +143,7 @@ public class ClassHeaderPrinter {
     }
     
     private void processHeader(ClassModel cm) {
-        ptr.println(dir_super, cm.superclass());
+        cm.superclass().ifPresent(cd -> ptr.print(dir_super, cd).nl());
         var interfaces = cm.interfaces();
         if (!interfaces.isEmpty()) {
             ptr.print(dir_implements, ReservedWord.dot_array).nl().incrDepth();
