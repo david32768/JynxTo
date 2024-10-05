@@ -9,7 +9,6 @@ import jynx.Directive;
 import jynx.GlobalOption;
 import jynx.MainOption;
 
-import com.github.david32768.jynxto.jynx.AccessName;
 import com.github.david32768.jynxto.jynx.DirectiveAccessName;
 
 public class ClassPrinter {

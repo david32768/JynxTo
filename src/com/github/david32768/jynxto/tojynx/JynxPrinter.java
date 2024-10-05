@@ -23,6 +23,7 @@ import java.lang.constant.DynamicCallSiteDesc;
 import java.lang.constant.DynamicConstantDesc;
 import java.lang.constant.MethodHandleDesc;
 import java.lang.constant.MethodTypeDesc;
+import java.lang.invoke.TypeDescriptor;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -35,6 +36,7 @@ import static jynx.ReservedWordType.QUOTED;
 
 import jvm.AccessFlag;
 import jvm.HandleType;
+import static jynx.Global.LOG;
 import jynx.LogAssertionError;
 import jynx.LogMsgType;
 import jynx.Message;
@@ -120,17 +122,17 @@ public class JynxPrinter {
                 }
             }
             case DynamicCallSiteDesc c -> {
-                printDynamic(c.invocationName(), c.invocationType().descriptorString(),
+                printDynamic(c.invocationName(), c.invocationType(),
                         c.bootstrapMethod(), c.bootstrapArgs());
             }
             case ConstantDesc c -> {
                 printConstant(c);
             }
             case AnnotationValue.OfConstant val -> {
-                print(val);
+                printAnnotationValue(val);
             }
             case PoolEntry c -> {
-                print(c);
+                printPoolEntry(c);
             }
             case Opcode op -> {
                 printString(op.name().toLowerCase());
@@ -143,7 +145,7 @@ public class JynxPrinter {
                 printAccessName(dan.flags(), dan.name());
             }
             default -> {
-                printString(object.toString());
+                printString(object);
             }
         }
         return this;
@@ -162,18 +164,30 @@ public class JynxPrinter {
     }
 
     public JynxPrinter comment(Message msg, Object... objs) {
-        assert msg.getLogtype() == LogMsgType.INFO;
+        if (msg.getLogtype().compareTo(LogMsgType.INFO) > 0) {
+            LOG(msg, objs);
+        }
+        assert sb.isEmpty();
         sep();
         sb.append(';');
         sep();
         String comment = msg.format(objs);
         sb.append(StringUtil.printable(comment));
-        return this;
+        return nl();
     }
         
     private void printAccessName(Set<AccessFlag> flags, Optional<CharSequence> name) {
         printFlags(flags);
         name.ifPresent(this::printName);
+    }
+    
+    private void printString(Object obj) {
+        String str = switch(obj) {
+            case TypeDescriptor type -> type.descriptorString();        
+            case Utf8Entry utf8 -> utf8.stringValue();        
+            default-> obj.toString();
+        };
+        printString(str);
     }
     
     private void printString(String string) {
@@ -249,38 +263,52 @@ public class JynxPrinter {
 
     private void printConstant(ConstantDesc cd) {
         switch(cd) {
-            case Number c -> {
-               printString(stringOf(c));
-            }
-            case String c -> {
+            case ClassDesc c -> {
                 printString(c);
             }
-            case ClassDesc c -> {
-                printString(c.descriptorString());
+            case MethodTypeDesc c -> {
+                printString(c);
             }
             case DirectMethodHandleDesc c -> {
                 printString(stringOf(c));
             }
             case MethodHandleDesc c -> {
-                printString(c.invocationType().descriptorString());
-            }
-            case MethodTypeDesc c -> {
-                printString(c.descriptorString());
+                printString(c.invocationType());
             }
             case DynamicConstantDesc c -> {
-                printDynamic(c.constantName(), c.constantType().descriptorString(),
+                printDynamic(c.constantName(), c.constantType(),
                         c.bootstrapMethod(), c.bootstrapArgs());
             }
-            default -> {
-                printString(cd.toString());
+            case Long L -> {
+                printString(L.toString() + 'L');
+            }
+            case Float c -> {
+                String fstr = Float.toHexString(c) + "F";
+                if (c.isNaN() || c.compareTo(Float.MAX_VALUE) > 0) { // NaN or positive infinity
+                    fstr = "+" + fstr;
+                } 
+                printString(fstr);
+            }
+            case Double c -> {
+                String dstr = Double.toHexString(c);
+                if (c.isNaN() || c.compareTo(Double.MAX_VALUE) > 0) { // NaN or positive infinity
+                    dstr = "+" + dstr;
+                } 
+                printString(dstr);
+            }
+            case Number n -> {
+                printString(n);
+            }
+            case String s -> {
+                printString(s);
             }
         }
     }
 
-    private void print(PoolEntry entry) {
+    private void printPoolEntry(PoolEntry entry) {
         switch(entry) {
             case Utf8Entry c -> {
-                printString(c.stringValue());
+                printString(c);
             }
             case AnnotationConstantValueEntry e -> {
                 throw new UnsupportedOperationException("" + e);
@@ -296,9 +324,8 @@ public class JynxPrinter {
             }
             case FieldRefEntry e -> {
                 var name = e.owner().asInternalName() + "." + e.name().stringValue();
-                var desc = e.typeSymbol().descriptorString();
                 printString(name);
-                printString(desc);
+                printString(e.type());
             }
             case InterfaceMethodRefEntry e -> {
                 String nameDesc = e.name().stringValue() + e.type().stringValue();
@@ -311,18 +338,18 @@ public class JynxPrinter {
                 printString(ownerNameDesc);
             }
             case ModuleEntry e -> {
-                printString(e.name().stringValue());
+                printString(e.name());
             }
              case NameAndTypeEntry e -> {
                 throw new UnsupportedOperationException("" + e);
             }
             case PackageEntry e -> {
-                printString(e.name().stringValue());
+                printString(e.name());
             }
        }
     }
     
-    private void printDynamic(String name, String type,
+    private void printDynamic(String name, TypeDescriptor type,
             MethodHandleDesc bootstrapMethod, ConstantDesc[] bootstrapArgs) {
         
         print(ReservedWord.left_brace, name, type, bootstrapMethod);
@@ -336,7 +363,7 @@ public class JynxPrinter {
         print(ReservedWord.right_brace);
     }
     
-    private void print(AnnotationValue.OfConstant value) {
+    private void printAnnotationValue(AnnotationValue.OfConstant value) {
         switch(value) {
             case AnnotationValue.OfString val -> {
                 printQuoted(val.stringValue());
@@ -353,45 +380,6 @@ public class JynxPrinter {
         }
     }
     
-    private String stringOf(Number number) {
-        String str = number.toString();
-        switch(number) {
-            case Byte _ -> {}
-            case Short _ -> {}
-            case Integer _ -> {}
-            case Long _ -> {
-                str += "L";
-            }
-            case Float c -> {
-                str = Float.toHexString(c) + "F";
-                if (c.isNaN() || c.compareTo(Float.MAX_VALUE) > 0) { // NaN or positive infinity
-                    str = "+" + str;
-                } 
-            }
-            case Double c -> {
-                str = Double.toHexString(c);
-                if (c.isNaN() || c.compareTo(Double.MAX_VALUE) > 0) { // NaN or positive infinity
-                    str = "+" + str;
-                } 
-            }
-            default -> {
-                throw new UnsupportedOperationException();
-            }
-        }
-        return str;
-    }
-
-    private String stringOf(ClassDesc owner) {
-        String desc = owner.descriptorString();
-        if (!owner.isArray() && !owner.isPrimitive()) {
-            assert desc.charAt(0) == 'L';
-            assert desc.charAt(desc.length() - 1) == ';';
-            return desc.substring(1, desc.length() - 1);
-        } else {
-            return desc;
-        }
-    }
-    
     private String stringOf(DirectMethodHandleDesc bsm) {
         var kind = HandleType.getInstance(bsm.refKind());
         String itf = bsm.isOwnerInterface()? "@": "";
@@ -402,6 +390,17 @@ public class JynxPrinter {
         }
         String nameDesc = name + bsm.lookupDescriptor();
         return nameDesc;
+    }
+    
+    private String stringOf(ClassDesc owner) {
+        String desc = owner.descriptorString();
+        if (!owner.isArray() && !owner.isPrimitive()) {
+            assert desc.charAt(0) == 'L';
+            assert desc.charAt(desc.length() - 1) == ';';
+            return desc.substring(1, desc.length() - 1);
+        } else {
+            return desc;
+        }
     }
     
 }

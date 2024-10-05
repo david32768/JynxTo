@@ -1,7 +1,6 @@
 package com.github.david32768.jynxto.tojynx;
 
 import com.github.david32768.jynxto.jynx.AccessName;
-import com.github.david32768.jynxto.utility.UnknownAttributes;
 import java.lang.classfile.Attribute;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.attribute.ModuleAttribute;
@@ -38,7 +37,7 @@ public class ModulePrinter extends ClassHeaderPrinter {
             if (standard != null && standard.inContext(Context.CLASS) && standard.inContext(Context.MODULE)) {
                 boolean processed = processClassAttribute(attribute);
                 if(!processed) {
-                    UnknownAttributes.unknown(attribute, Context.MODULE);
+                    UnknownAttributes.unknown(ptr.copy(), attribute, Context.MODULE);
                 }
             } else {
                 moduleAttributes.put(name,attribute);
@@ -142,7 +141,7 @@ public class ModulePrinter extends ClassHeaderPrinter {
                 ptr.decrDepth().print(end_array).nl();
             }
             default -> {
-                UnknownAttributes.unknown(attribute, Context.MODULE);
+                UnknownAttributes.unknown(ptr.copy(), attribute, Context.MODULE);
             }            
         }
     }

@@ -39,7 +39,6 @@ import jynx.ReservedWord;
 
 import com.github.david32768.jynxto.stack.StackChecker;
 import com.github.david32768.jynxto.utility.InstructionVisitor;
-import com.github.david32768.jynxto.utility.UnknownAttributes;
 
 public class CodePrinter {
 
@@ -145,7 +144,7 @@ public class CodePrinter {
                 }
             }
             default -> {
-                UnknownAttributes.unknown(attribute, Context.CODE);
+                UnknownAttributes.unknown(ptr.copy(), attribute, Context.CODE);
             }
         }
     }
@@ -175,7 +174,7 @@ public class CodePrinter {
         var type = varSignatures.remove(key);
         ptr.print(Directive.dir_var, local.slot());
         ptr.print(ReservedWord.res_is, local.name());
-        ptr.print(local.typeSymbol());
+        ptr.print(local.type());
         if (type != null) {
             if (type.name().equals(local.name())) {
                 ptr.print(ReservedWord.res_signature, type.signature());

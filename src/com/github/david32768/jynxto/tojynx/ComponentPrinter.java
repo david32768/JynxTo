@@ -11,7 +11,6 @@ import java.lang.classfile.attribute.SignatureAttribute;
 import jvm.Context;
 import jynx.Directive;
 
-import com.github.david32768.jynxto.utility.UnknownAttributes;
 
 public class ComponentPrinter {
 
@@ -55,7 +54,7 @@ public class ComponentPrinter {
                     }
                 }
                 default -> {
-                    UnknownAttributes.unknown(attribute, Context.COMPONENT);
+                    UnknownAttributes.unknown(ptr.copy(), attribute, Context.COMPONENT);
                 }
             }
         }

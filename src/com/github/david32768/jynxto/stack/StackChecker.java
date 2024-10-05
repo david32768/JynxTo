@@ -148,10 +148,10 @@ public class StackChecker {
         return switch(type) {
             case StackMapFrameInfo.SimpleVerificationTypeInfo simple -> {
                 yield switch(simple) {
-                    case ITEM_DOUBLE -> TypeKind.DOUBLE;
-                    case ITEM_FLOAT -> TypeKind.FLOAT;
-                    case ITEM_INTEGER  -> TypeKind.INT;
-                    case ITEM_LONG  -> TypeKind.LONG;
+                    case DOUBLE -> TypeKind.DOUBLE;
+                    case FLOAT -> TypeKind.FLOAT;
+                    case INTEGER  -> TypeKind.INT;
+                    case LONG  -> TypeKind.LONG;
                     default -> TypeKind.REFERENCE;
                 };
             }

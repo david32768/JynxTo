@@ -46,48 +46,48 @@ public interface InstructionVisitor {
             case ArrayLoadInstruction inst -> {
                 assert EnumSet.of(IALOAD, LALOAD, FALOAD, DALOAD, AALOAD, BALOAD, CALOAD, SALOAD)
                     .contains(op):BAD_OP + op;
-                iv.arrayLoad(inst.opcode(), inst);
+                iv.arrayLoad(op, inst);
             }
             case ArrayStoreInstruction inst -> {
                 assert EnumSet.of(IASTORE, LASTORE, FASTORE, DASTORE, AASTORE, BASTORE, CASTORE, SASTORE)
                     .contains(op):BAD_OP + op;
-                iv.arrayStore(inst.opcode(), inst);
+                iv.arrayStore(op, inst);
             }
             case BranchInstruction inst -> {
                 assert EnumSet.of(IFEQ, IFNE, IFLT, IFGE, IFGT, IFLE, IFNULL, IFNONNULL,
                         IF_ICMPEQ, IF_ICMPNE, IF_ICMPLT, IF_ICMPGE, IF_ICMPGT, IF_ICMPLE, IF_ACMPEQ, IF_ACMPNE,
                         GOTO, GOTO_W)
                     .contains(op):BAD_OP + op;
-                iv.branch(inst.opcode(), inst);
+                iv.branch(op, inst);
             }
             case ConstantInstruction inst -> {
                 assert EnumSet.of(ACONST_NULL, BIPUSH, SIPUSH, LDC, LDC_W, LDC2_W,
                         ICONST_M1, ICONST_0, ICONST_1, ICONST_2, ICONST_3, ICONST_4, ICONST_5,
                         LCONST_0, LCONST_1, FCONST_0, FCONST_1, FCONST_2, DCONST_0, DCONST_1)
                     .contains(op):BAD_OP + op;
-                iv.constant(inst.opcode(), inst);
+                iv.constant(op, inst);
             }
             case ConvertInstruction inst -> {
                 assert EnumSet.of(I2L, I2F, I2D, L2I, L2F, L2D, F2I, F2L, F2D, D2I, D2L, D2F, I2B, I2C, I2S)
                         .contains(op):BAD_OP + op;
-                iv.convert(inst.opcode(), inst);
+                iv.convert(op, inst);
             }
             case DiscontinuedInstruction inst -> {
                 assert EnumSet.of(JSR, JSR_W, RET, RET_W).contains(op):BAD_OP + op;
-                iv.discontinued(inst.opcode(), inst);
+                iv.discontinued(op, inst);
             }
             case FieldInstruction inst -> {
                 assert EnumSet.of(GETSTATIC, PUTSTATIC, GETFIELD, PUTFIELD).contains(op):BAD_OP + op;
-                iv.field(inst.opcode(), inst);
+                iv.field(op, inst);
             }
             case InvokeDynamicInstruction inst -> {
                 assert op == Opcode.INVOKEDYNAMIC:BAD_OP + op;
-                iv.invokeDynamic(inst.opcode(), inst);
+                iv.invokeDynamic(op, inst);
             }
             case InvokeInstruction inst -> {
                 assert EnumSet.of(INVOKEVIRTUAL, INVOKESPECIAL, INVOKESTATIC, INVOKEINTERFACE)
                     .contains(op):BAD_OP + op;
-                iv.invoke(inst.opcode(), inst);
+                iv.invoke(op, inst);
             }
             case LoadInstruction inst -> {
                 assert EnumSet.of(ILOAD, LLOAD, FLOAD, DLOAD, ALOAD,
@@ -98,7 +98,7 @@ public interface InstructionVisitor {
                         ALOAD_0, ALOAD_1, ALOAD_2, ALOAD_3,
                         ILOAD_W, LLOAD_W, FLOAD_W, DLOAD_W, ALOAD_W)
                     .contains(op):BAD_OP + op;
-                iv.load(inst.opcode(), inst);
+                iv.load(op, inst);
             }
             case StoreInstruction inst -> {
                 assert EnumSet.of(ISTORE, LSTORE, FSTORE, DSTORE, ASTORE,
@@ -109,39 +109,39 @@ public interface InstructionVisitor {
                         ASTORE_0, ASTORE_1, ASTORE_2, ASTORE_3,
                         ISTORE_W, LSTORE_W, FSTORE_W, DSTORE_W, ASTORE_W)
                     .contains(op):BAD_OP + op;
-                iv.store(inst.opcode(), inst);
+                iv.store(op, inst);
             }
             case IncrementInstruction inst -> {
                 assert EnumSet.of(IINC, IINC_W).contains(op):BAD_OP + op;
-                iv.increment(inst.opcode(), inst);
+                iv.increment(op, inst);
             }
             case LookupSwitchInstruction inst -> {
                 assert op == Opcode.LOOKUPSWITCH:BAD_OP + op;
-                iv.lookupSwitch(inst.opcode(), inst);
+                iv.lookupSwitch(op, inst);
             }
             case MonitorInstruction inst -> {
                 assert EnumSet.of(MONITORENTER, MONITOREXIT).contains(op):BAD_OP + op;
-                iv.monitor(inst.opcode(), inst);
+                iv.monitor(op, inst);
             }
             case NewMultiArrayInstruction inst -> {
                 assert op == Opcode.MULTIANEWARRAY:BAD_OP + op;
-                iv.newMultiArray(inst.opcode(), inst);
+                iv.newMultiArray(op, inst);
             }
             case NewObjectInstruction inst -> {
                 assert op == Opcode.NEW:BAD_OP + op;
-                iv.newObject(inst.opcode(), inst);
+                iv.newObject(op, inst);
             }
             case NewPrimitiveArrayInstruction inst -> {
                 assert op == Opcode.NEWARRAY:BAD_OP + op;
-                iv.newPrimitiveArray(inst.opcode(), inst);
+                iv.newPrimitiveArray(op, inst);
             }
             case NewReferenceArrayInstruction inst -> {
                 assert op == Opcode.ANEWARRAY:BAD_OP + op;
-                iv.newReferenceArray(inst.opcode(), inst);
+                iv.newReferenceArray(op, inst);
             }
             case NopInstruction inst -> {
                 assert op == Opcode.NOP:BAD_OP + op;
-                iv.nop(inst.opcode(), inst);
+                iv.nop(op, inst);
             }
             case OperatorInstruction inst -> {
                 assert EnumSet.of(IADD, LADD, FADD, DADD,
@@ -155,29 +155,29 @@ public interface InstructionVisitor {
                         LCMP, FCMPL, FCMPG, DCMPL, DCMPG,
                         ARRAYLENGTH)
                     .contains(op):BAD_OP + op;
-                iv.operator(inst.opcode(), inst);
+                iv.operator(op, inst);
             }
             case ReturnInstruction inst -> {
                 assert EnumSet.of(IRETURN, LRETURN, FRETURN, DRETURN, ARETURN, RETURN)
                     .contains(op):BAD_OP + op;
-                iv.return_(inst.opcode(), inst);
+                iv.return_(op, inst);
             }
             case StackInstruction inst -> {
                 assert EnumSet.of(POP, POP2, DUP, DUP_X1, DUP_X2, DUP2, DUP2_X1, DUP2_X2, SWAP)
                     .contains(op):BAD_OP + op;
-                iv.stack(inst.opcode(), inst);
+                iv.stack(op, inst);
             }
             case TableSwitchInstruction inst -> {
                 assert op == Opcode.TABLESWITCH:BAD_OP + op;
-                iv.tableSwitch(inst.opcode(), inst);
+                iv.tableSwitch(op, inst);
             }
             case ThrowInstruction inst -> {
                 assert op == Opcode.ATHROW:BAD_OP + op;
-                iv.throw_(inst.opcode(), inst);
+                iv.throw_(op, inst);
             }
             case TypeCheckInstruction inst -> {
                 assert EnumSet.of(INSTANCEOF, CHECKCAST).contains(op):BAD_OP + op;
-                iv.typeCheck(inst.opcode(), inst);
+                iv.typeCheck(op, inst);
             }
         }
     }

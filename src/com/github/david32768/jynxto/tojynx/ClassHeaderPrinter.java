@@ -8,16 +8,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static jynx.Directive.*;
-import static jynx.Message.M174;
 
-import jvm.AccessFlag;
 import jvm.Context;
 import jvm.JvmVersion;
 import jynx.ReservedWord;
 
-import com.github.david32768.jynxto.jynx.AccessName;
 import com.github.david32768.jynxto.jynx.DirectiveAccessName;
-import com.github.david32768.jynxto.utility.UnknownAttributes;
+import java.lang.classfile.constantpool.Utf8Entry;
+import java.nio.ByteBuffer;
+import static jynx.Global.OPTION;
+import static jynx.GlobalOption.VALHALLA;
 
 public class ClassHeaderPrinter {
     
@@ -35,14 +35,30 @@ public class ClassHeaderPrinter {
         return List.copyOf(components);
     }
 
+    private static final String LOADABLE = "LoadableDescriptors";
     
     void process(ClassModel cm) {
         ptr.incrDepth();
         processHeader(cm);
         for (var attribute : cm.attributes()) {
             boolean processed = processClassAttribute(attribute);
-            if(!processed) {
-                UnknownAttributes.unknown(attribute, Context.CLASS);
+            if(!processed && attribute instanceof UnknownAttribute uattr) {
+                if (OPTION(VALHALLA) && uattr.attributeName().equals(LOADABLE)) {
+                    ptr.print(";", LOADABLE, ReservedWord.dot_array).nl()
+                            .incrDepth();
+                    var cp = cm.constantPool();
+                    var bb = ByteBuffer.wrap(uattr.contents());
+                    int ct = bb.getShort();
+                    while (bb.hasRemaining()) {
+                        int index = bb.getShort();
+                        Utf8Entry klass = cp.entryByIndex(index, Utf8Entry.class);
+                        ptr.print(";",klass).nl();
+                    }
+                    ptr.decrDepth()
+                            .print(";", end_array).nl();
+                } else { 
+                    UnknownAttributes.unknown(ptr.copy(), attribute, Context.CLASS);
+                }
             }
         }
         ptr.decrDepth();
@@ -122,14 +138,6 @@ public class ClassHeaderPrinter {
                 for (var annotation : attr.annotations()) {
                     ap.processRuntimeTypeAnnotation(true, (TypeAnnotation)annotation);
                 }
-            }
-            case SyntheticAttribute attr -> {
-                // "%s is omitted as pseudo_access flag %s is used"
-                ptr.comment(M174, attr, jvm.AccessFlag.acc_synthetic).nl();
-            }
-            case DeprecatedAttribute attr -> {
-                // "%s is omitted as pseudo_access flag %s is used"
-                ptr.comment(M174, attr, AccessFlag.acc_deprecated).nl();
             }
             case RecordAttribute attr -> {
                 components.addAll(attr.components());

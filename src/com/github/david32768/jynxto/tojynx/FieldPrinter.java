@@ -5,23 +5,20 @@ import java.lang.classfile.Attribute;
 import java.lang.classfile.FieldModel;
 import java.lang.classfile.TypeAnnotation;
 import java.lang.classfile.attribute.ConstantValueAttribute;
-import java.lang.classfile.attribute.DeprecatedAttribute;
 import java.lang.classfile.attribute.RuntimeInvisibleAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeInvisibleTypeAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleTypeAnnotationsAttribute;
 import java.lang.classfile.attribute.SignatureAttribute;
-import java.lang.classfile.attribute.SyntheticAttribute;
 import java.lang.reflect.AccessFlag;
 
-import static jynx.Message.M174;
 
 import jvm.Context;
 import jynx.Directive;
 import jynx.ReservedWord;
 
 import com.github.david32768.jynxto.jynx.AccessName;
-import com.github.david32768.jynxto.utility.UnknownAttributes;
+import java.lang.classfile.Attributes;
 
 public class FieldPrinter {
 
@@ -35,36 +32,21 @@ public class FieldPrinter {
     void process(FieldModel fm) {
         var accessName = AccessName.of(fm);
         ptr.nl().print(Directive.dir_field, accessName, fm.fieldType());
-        var fmflags = fm.flags();
-        if (fmflags.has(AccessFlag.STATIC) && fmflags.has(AccessFlag.FINAL)) {
-            for (var attribute: fm.attributes()) {
-                switch(attribute) {
-                    case ConstantValueAttribute attr -> {
-                        var constant = attr.constant().constantValue();
-                        switch(constant) {
-                            case String c -> {
-                                ptr.print(ReservedWord.equals_sign)
-                                        .printQuoted(c);
-                            }
-                            default  -> {
-                                ptr.print(ReservedWord.equals_sign, constant);
-                            }
-                        }
-                    }
-                    default -> {}
+        var cva = fm.findAttribute(Attributes.constantValue());
+        if (cva.isPresent()) {
+            var constant = cva.get().constant().constantValue();
+            switch(constant) {
+                case String c -> {
+                    ptr.print(ReservedWord.equals_sign)
+                            .printQuoted(c);
+                }
+                default  -> {
+                    ptr.print(ReservedWord.equals_sign, constant);
                 }
             }
         }
         ptr.nl().incrDepth();
-        for (var element : fm.elementList()) {
-            switch(element) {
-                case AccessFlags _ -> {}
-                case Attribute _ -> {}
-                default -> {
-                    ptr.print("; element", element).nl();            
-                }
-            }
-        }
+
         int ignoredCount = 0;
         for (var attribute: fm.attributes()) {
             switch(attribute) {
@@ -98,18 +80,8 @@ public class FieldPrinter {
                 case ConstantValueAttribute _ -> {
                     ++ignoredCount;
                 }
-                case SyntheticAttribute attr -> {
-                    // "%s is omitted as pseudo_access flag %s is used"
-                    ptr.comment(M174, attr, jvm.AccessFlag.acc_synthetic).nl();
-                    ++ignoredCount;
-                }
-                case DeprecatedAttribute attr -> {
-                    // "%s is omitted as pseudo_access flag %s is used"
-                    ptr.comment(M174, attr, jvm.AccessFlag.acc_deprecated).nl();
-                    ++ignoredCount;
-                }
                 default -> {
-                    UnknownAttributes.unknown(attribute, Context.FIELD);
+                    UnknownAttributes.unknown(ptr.copy(), attribute, Context.FIELD);
                 }
             }
         }

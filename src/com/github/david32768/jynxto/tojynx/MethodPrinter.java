@@ -7,7 +7,6 @@ import java.lang.classfile.MethodModel;
 import java.lang.classfile.TypeAnnotation;
 import java.lang.classfile.attribute.AnnotationDefaultAttribute;
 import java.lang.classfile.attribute.CodeAttribute;
-import java.lang.classfile.attribute.DeprecatedAttribute;
 import java.lang.classfile.attribute.ExceptionsAttribute;
 import java.lang.classfile.attribute.MethodParametersAttribute;
 import java.lang.classfile.attribute.RuntimeInvisibleAnnotationsAttribute;
@@ -18,21 +17,17 @@ import java.lang.classfile.attribute.RuntimeVisibleParameterAnnotationsAttribute
 import java.lang.classfile.attribute.RuntimeVisibleTypeAnnotationsAttribute;
 import java.lang.classfile.attribute.SignatureAttribute;
 import java.lang.classfile.attribute.StackMapFrameInfo;
-import java.lang.classfile.attribute.SyntheticAttribute;
-import java.lang.classfile.constantpool.Utf8Entry;
 import java.lang.constant.ClassDesc;
 import java.lang.reflect.AccessFlag;
 import java.util.ArrayList;
 import java.util.List;
 
-import static jynx.Message.M174;
 
 import jvm.Context;
 import jynx.Directive;
 import jynx.ReservedWord;
 
 import com.github.david32768.jynxto.jynx.AccessName;
-import com.github.david32768.jynxto.utility.UnknownAttributes;
 
 public class MethodPrinter {
     
@@ -120,16 +115,8 @@ public class MethodPrinter {
                 }
             }
             case CodeAttribute _ -> {}
-            case SyntheticAttribute attr -> {
-                // "%s is omitted as pseudo_access flag %s is used"
-                ptr.comment(M174, attr, jvm.AccessFlag.acc_synthetic).nl();
-            }
-            case DeprecatedAttribute attr -> {
-                // "%s is omitted as pseudo_access flag %s is used"
-                ptr.comment(M174, attr, jvm.AccessFlag.acc_deprecated).nl();
-            }
             default -> {
-                UnknownAttributes.unknown(attribute, Context.METHOD);
+                UnknownAttributes.unknown(ptr.copy(), attribute, Context.METHOD);
             }
         }
     }
@@ -140,7 +127,7 @@ public class MethodPrinter {
         if (!mm.flags().has(AccessFlag.STATIC)) {
             String mname = mm.methodName().stringValue();
             if (mname.equals("<init>")) {
-                result.add(ITEM_UNINITIALIZED_THIS);
+                result.add(UNINITIALIZED_THIS);
             } else {
                 result.add(verificationTypeInfoOf(classDesc));
             }
@@ -157,10 +144,10 @@ public class MethodPrinter {
             assert primitive.length() == 1;
             char first = primitive.charAt(0);
             return switch (first) {
-                case 'J' -> ITEM_LONG;
-                case 'F' -> ITEM_FLOAT;
-                case 'D' -> ITEM_DOUBLE;
-                default -> ITEM_INTEGER;
+                case 'J' -> LONG;
+                case 'F' -> FLOAT;
+                case 'D' -> DOUBLE;
+                default -> INTEGER;
             };
         } else {
             return StackMapFrameInfo.ObjectVerificationTypeInfo.of(desc);

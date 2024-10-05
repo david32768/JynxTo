@@ -14,20 +14,13 @@ import java.lang.classfile.attribute.ModuleRequireInfo;
 import java.lang.classfile.attribute.RecordAttribute;
 import java.lang.classfile.attribute.SyntheticAttribute;
 import java.lang.classfile.constantpool.Utf8Entry;
-import java.lang.reflect.AccessFlag;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 
-import static jynx.Message.M148;
-
-import jvm.JvmVersion;
-import jynx.ClassType;
-import jynx.Directive;
-import jynx.LogIllegalArgumentException;
-
+import jvm.Context;
+import jynx.Global;
 
 public record AccessName(EnumSet<jvm.AccessFlag> flags, Optional<CharSequence> name) {
 
@@ -50,64 +43,51 @@ public record AccessName(EnumSet<jvm.AccessFlag> flags, Optional<CharSequence> n
         } else {
             optname = Optional.of(name);
         }
-        return of(cm.flags().flags(), optname).adjustForAttributes(cm.attributes());
+        return of(cm.flags().flagsMask(), Context.CLASS, optname).adjustForAttributes(cm.attributes());
     }
 
     public static AccessName of(FieldModel fm) {
-        return of(fm.flags().flags(), fm.fieldName()).adjustForAttributes(fm.attributes());
+        return of(fm.flags().flagsMask(), Context.FIELD, fm.fieldName()).adjustForAttributes(fm.attributes());
     }
 
     public static AccessName of(InnerClassInfo inner) {
-        return of(inner.flags(), inner.innerClass().asInternalName());
+        return of(inner.flagsMask(), Context.INNER_CLASS, inner.innerClass().asInternalName());
     }
 
     public static AccessName of(MethodParameterInfo parm) {
         Optional<CharSequence> name = parm.name().map(Utf8Entry::stringValue);
-        return of(parm.flags(), name);
+        return of(parm.flagsMask(), Context.PARAMETER, name);
     }
 
     public static AccessName of(MethodModel mm) {
-        String namedesc = mm.methodName().stringValue() + mm.methodTypeSymbol().descriptorString();
-        return of(mm.flags().flags(), namedesc).adjustForAttributes(mm.attributes());
+        String namedesc = mm.methodName().stringValue() + mm.methodType().stringValue();
+        return of(mm.flags().flagsMask(), Context.METHOD, namedesc).adjustForAttributes(mm.attributes());
     }
 
     public static AccessName of(ModuleAttribute module) {
-        return of(module.moduleFlags(), module.moduleName().name());
+        return of(module.moduleFlagsMask(),Context.MODULE, module.moduleName().name());
     }
 
     public static AccessName of(ModuleExportInfo exported) {
-        return of(exported.exportsFlags(), exported.exportedPackage().name());
+        return of(exported.exportsFlagsMask(), Context.EXPORT, exported.exportedPackage().name());
     }
 
     public static AccessName of(ModuleOpenInfo opened) {
-        return of(opened.opensFlags(), opened.openedPackage().name());
+        return of(opened.opensFlagsMask(), Context.OPEN, opened.openedPackage().name());
     }
 
     public static AccessName of(ModuleRequireInfo required) {
-        return of(required.requiresFlags(), required.requires().name());
+        return of(required.requiresFlagsMask(), Context.REQUIRE, required.requires().name());
     }
 
-    private static AccessName of(Set<AccessFlag> flags, CharSequence name) {
+    private static AccessName of(int flagsMask, Context context, CharSequence name) {
         assert !name.isEmpty();
-        return of(flags, Optional.of(name));
+        return of(flagsMask, context, Optional.of(name));
     } 
 
-    private static AccessName of(Set<AccessFlag> flags, Optional<CharSequence> name) {
-        return new AccessName(convertFlags(flags), name);
-    } 
-
-    private static EnumSet<jvm.AccessFlag> convertFlags(Set<AccessFlag> flags) {
-        EnumSet<jvm.AccessFlag> result = EnumSet.noneOf(jvm.AccessFlag.class);
-        for (var flag : flags) {
-            String flagname = flag.name().toLowerCase();
-            var jvmflag = jvm.AccessFlag.fromString(flagname);
-            if (jvmflag.isEmpty()) {
-                // "unknown access flag %s" M148
-                throw new LogIllegalArgumentException(M148, flagname);
-            }
-            result.add(jvmflag.get());
-        }
-        return result;
+    private static AccessName of(int flagsMask, Context context, Optional<CharSequence> name) {
+        var flags = jvm.AccessFlag.getEnumSet(flagsMask, context, Global.JVM_VERSION());
+        return new AccessName(flags, name);
     } 
 
     private AccessName adjustForAttributes(List<Attribute<?>> attributes) {

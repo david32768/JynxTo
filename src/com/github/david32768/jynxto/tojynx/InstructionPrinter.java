@@ -27,6 +27,7 @@ import jynx.Directive;
 import jynx.ReservedWord;
 
 import com.github.david32768.jynxto.utility.AbstractOpcodeVisitor;
+import java.util.Arrays;
 import jvm.NumType;
 
 public class InstructionPrinter extends AbstractOpcodeVisitor {
@@ -186,11 +187,21 @@ public class InstructionPrinter extends AbstractOpcodeVisitor {
         String defname = labelName(deflab);
         ptr.print(op, ReservedWord.res_default, defname, ReservedWord.dot_array)
                 .nl().incrDepth();
+        long low = inst.lowValue();
+        long high = inst.highValue();
+        long size = high - low + 1;
+        Label[] targets = new Label[(int)size];
+        Arrays.fill(targets, deflab);
         for (var valueLabel : inst.cases()) {
-            int value = valueLabel.caseValue();
-            var label = valueLabel.target();
+            long value = valueLabel.caseValue();
+            long index = value - low;
+            targets[(int)index] = valueLabel.target();
+        }
+        for (int i = 0; i < size; ++i) {
+            var label = targets[i];
             String labname = labelName(label);
-            ptr.print(value, ReservedWord.right_arrow, labname).nl();
+            long value = low + i;
+            ptr.print((int)value, ReservedWord.right_arrow, labname).nl();
         }
         ptr.decrDepth().print(Directive.end_array).nl();
     }
