@@ -17,18 +17,18 @@ import java.lang.classfile.instruction.NewObjectInstruction;
 import java.lang.classfile.instruction.NewPrimitiveArrayInstruction;
 import java.lang.classfile.instruction.NewReferenceArrayInstruction;
 import java.lang.classfile.instruction.StoreInstruction;
+import java.lang.classfile.instruction.SwitchCase;
 import java.lang.classfile.instruction.TableSwitchInstruction;
 import java.lang.classfile.instruction.TypeCheckInstruction;
 import java.lang.constant.ConstantDesc;
 import java.lang.constant.DynamicCallSiteDesc;
 import java.util.function.Function;
 
+import jvm.NumType;
 import jynx.Directive;
 import jynx.ReservedWord;
 
 import com.github.david32768.jynxto.utility.AbstractOpcodeVisitor;
-import java.util.Arrays;
-import jvm.NumType;
 
 public class InstructionPrinter extends AbstractOpcodeVisitor {
 
@@ -147,11 +147,15 @@ public class InstructionPrinter extends AbstractOpcodeVisitor {
         String defname = labelName(deflab);
         ptr.print(op, ReservedWord.res_default, defname, ReservedWord.dot_array)
                 .nl().incrDepth();
-        for (var valueLabel : inst.cases()) {
-            int value = valueLabel.caseValue();
-            var label = valueLabel.target();
+        var cases = inst.cases();
+        int next = cases.isEmpty()? Integer.MIN_VALUE: cases.getFirst().caseValue();
+        for (SwitchCase c : cases) {
+            int value = c.caseValue();
+            assert value >= next;		
+            var label = c.target();
             String labname = labelName(label);
             ptr.print(value, ReservedWord.right_arrow, labname).nl();
+	    next = value + 1;            
         }
         ptr.decrDepth().print(Directive.end_array).nl();
     }
@@ -187,22 +191,24 @@ public class InstructionPrinter extends AbstractOpcodeVisitor {
         String defname = labelName(deflab);
         ptr.print(op, ReservedWord.res_default, defname, ReservedWord.dot_array)
                 .nl().incrDepth();
-        long low = inst.lowValue();
-        long high = inst.highValue();
-        long size = high - low + 1;
-        Label[] targets = new Label[(int)size];
-        Arrays.fill(targets, deflab);
-        for (var valueLabel : inst.cases()) {
-            long value = valueLabel.caseValue();
-            long index = value - low;
-            targets[(int)index] = valueLabel.target();
-        }
-        for (int i = 0; i < size; ++i) {
-            var label = targets[i];
-            String labname = labelName(label);
-            long value = low + i;
-            ptr.print((int)value, ReservedWord.right_arrow, labname).nl();
-        }
+        int low = inst.lowValue();
+        int high = inst.highValue();
+        var cases = inst.cases();
+        assert !cases.isEmpty();
+        assert low == cases.getFirst().caseValue();
+        assert high == cases.getLast().caseValue();
+        assert low <= high;
+        int next = low;
+        for (SwitchCase c : cases) {
+            int value = c.caseValue();
+            assert value >= next;
+            for (; next < value; next++) {
+                ptr.print(next, ReservedWord.right_arrow, defname).nl();
+            }
+            String labname = labelName(c.target());
+            ptr.print(value, ReservedWord.right_arrow, labname).nl();
+            next = value + 1;
+	}
         ptr.decrDepth().print(Directive.end_array).nl();
     }
 

@@ -7,9 +7,9 @@ import java.lang.classfile.attribute.UnknownAttribute;
 
 import static jynx.Message.M172;
 import static jynx.Message.M173;
+import static jynx.Message.M174;
 
 import jvm.Context;
-import static jynx.Message.M174;
 
 public class UnknownAttributes {
 

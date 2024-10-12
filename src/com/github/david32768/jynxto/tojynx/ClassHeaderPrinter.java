@@ -2,11 +2,15 @@ package com.github.david32768.jynxto.tojynx;
 
 import java.lang.classfile.Attribute;
 import java.lang.classfile.ClassModel;
+import java.lang.classfile.constantpool.Utf8Entry;
 import java.lang.classfile.attribute.*;
 import java.lang.classfile.TypeAnnotation;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import static jynx.Global.OPTION;
+import static jynx.GlobalOption.VALHALLA;
 import static jynx.Directive.*;
 
 import jvm.Context;
@@ -14,10 +18,6 @@ import jvm.JvmVersion;
 import jynx.ReservedWord;
 
 import com.github.david32768.jynxto.jynx.DirectiveAccessName;
-import java.lang.classfile.constantpool.Utf8Entry;
-import java.nio.ByteBuffer;
-import static jynx.Global.OPTION;
-import static jynx.GlobalOption.VALHALLA;
 
 public class ClassHeaderPrinter {
     
