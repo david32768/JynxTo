@@ -22,7 +22,20 @@ import java.lang.classfile.instruction.TableSwitchInstruction;
 import java.lang.classfile.instruction.TypeCheckInstruction;
 import java.lang.constant.ConstantDesc;
 import java.lang.constant.DynamicCallSiteDesc;
+import java.util.Collection;
 import java.util.function.Function;
+import java.util.List;
+import java.util.SortedMap;
+import java.util.TreeMap;
+
+import static jynx.Global.OPTION;
+import static jynx.GlobalOption.GENERIC_SWITCH;
+import static jynx.Message.M603;
+import static jynx.Message.M604;
+import static jynx.Message.M605;
+import static jynx.Message.M606;
+import static jynx.Message.M607;
+import static jynx.Message.M610;
 
 import jvm.NumType;
 import jynx.Directive;
@@ -34,10 +47,12 @@ public class InstructionPrinter extends AbstractOpcodeVisitor {
 
     private final JynxPrinter ptr;
     private final Function<Label,String> labelNamer;
+    private final boolean genericSwitch;
 
     public InstructionPrinter(JynxPrinter ptr, Function<Label, String> labelNamer) {
         this.ptr = ptr.copy();
         this.labelNamer = labelNamer;
+        this.genericSwitch = OPTION(GENERIC_SWITCH);
     }
 
     private String labelName(Label label) {
@@ -141,23 +156,22 @@ public class InstructionPrinter extends AbstractOpcodeVisitor {
         }
     }
 
+    private final int SWITCH_OVERHEAD = 1 + 2 + 1 + 4 + 1;
+    // iload_ + padding + op + default + (cases) + return
+    
+    private final int MAX_LOOKUP_ENTRIES = (CodePrinter.MAX_CODESIZE - (SWITCH_OVERHEAD + 4))/8; // = 8190
+    
     @Override
     public void lookupSwitch(Opcode op, LookupSwitchInstruction inst) {
-        var deflab = inst.defaultTarget();
-        String defname = labelName(deflab);
-        ptr.print(op, ReservedWord.res_default, defname, ReservedWord.dot_array)
-                .nl().incrDepth();
-        var cases = inst.cases();
-        int next = cases.isEmpty()? Integer.MIN_VALUE: cases.getFirst().caseValue();
-        for (SwitchCase c : cases) {
-            int value = c.caseValue();
-            assert value >= next;		
-            var label = c.target();
-            String labname = labelName(label);
-            ptr.print(value, ReservedWord.right_arrow, labname).nl();
-	    next = value + 1;            
+        var cases = sortCases(op, inst.cases()); // find duplicate case values
+
+        if (cases.size() > MAX_LOOKUP_ENTRIES) {
+            // "number of entries in %s (%d) exceeds maximum possible %d"
+            String msg = M607.format(op, cases.size(), MAX_LOOKUP_ENTRIES);
+            throw new IllegalArgumentException(msg);
         }
-        ptr.decrDepth().print(Directive.end_array).nl();
+
+        switch_(op, inst.defaultTarget(), cases.values());
     }
 
     @Override
@@ -185,31 +199,45 @@ public class InstructionPrinter extends AbstractOpcodeVisitor {
         ptr.print(op, type).nl();
     }
 
+    private final int MAX_TABLE_ENTRIES = (CodePrinter.MAX_CODESIZE - (SWITCH_OVERHEAD + 4 + 4))/4; // = 16379
+    
     @Override
     public void tableSwitch(Opcode op, TableSwitchInstruction inst) {
         var deflab = inst.defaultTarget();
-        String defname = labelName(deflab);
-        ptr.print(op, ReservedWord.res_default, defname, ReservedWord.dot_array)
-                .nl().incrDepth();
+        var cases = inst.cases();
         int low = inst.lowValue();
         int high = inst.highValue();
-        var cases = inst.cases();
-        assert !cases.isEmpty();
-        assert low == cases.getFirst().caseValue();
-        assert high == cases.getLast().caseValue();
-        assert low <= high;
-        int next = low;
-        for (SwitchCase c : cases) {
-            int value = c.caseValue();
-            assert value >= next;
-            for (; next < value; next++) {
-                ptr.print(next, ReservedWord.right_arrow, defname).nl();
-            }
-            String labname = labelName(c.target());
-            ptr.print(value, ReservedWord.right_arrow, labname).nl();
-            next = value + 1;
-	}
-        ptr.decrDepth().print(Directive.end_array).nl();
+        if (high < low) {
+            // "high (%d) is less than low (%d) in %s"
+            String msg = M606.format(high, low, op);
+            throw new IllegalArgumentException(msg);
+        }
+
+        var map = sortCases(op, cases);
+        map.putIfAbsent(low, SwitchCase.of(low, deflab));
+        map.putIfAbsent(high, SwitchCase.of(high, deflab));
+
+        int caselow = cases.getFirst().caseValue();
+        int casehigh = cases.getLast().caseValue();
+        if (caselow < low) {
+            // "lowest case value (%d) is lower than low (%d)"
+            ptr.comment(M604, caselow, low);
+            low = caselow;
+        }
+        if (casehigh > high) {
+            // "highest case value (%d) is higher than high (%d)"
+            ptr.comment(M605, casehigh, high);
+            high = casehigh;
+        }
+
+        long entryct = 1L + high - low;
+        if (entryct > MAX_TABLE_ENTRIES) {
+            // "number of entries in %s (%d) exceeds maximum possible %d"
+            String msg = M607.format(op, entryct, MAX_TABLE_ENTRIES);
+            throw new IllegalArgumentException(msg);
+        }
+        
+        switch_(op, deflab, map.values());
     }
 
     @Override
@@ -218,4 +246,41 @@ public class InstructionPrinter extends AbstractOpcodeVisitor {
         ptr.print(op, type).nl();
     }
     
+    private SortedMap<Integer,SwitchCase> sortCases(Opcode opcode, List<SwitchCase> cases) {
+        SortedMap<Integer,SwitchCase> map = new TreeMap<>();
+        for (var c : cases) {
+            var previous = map.putIfAbsent(c.caseValue(), c);
+            if (previous != null) {
+                if (c.target() == previous.target()) {
+                    // "duplicate case %d in %s dropped"
+                    ptr.comment(M603, c.caseValue(), opcode);                    
+                } else {
+                    // "ambiguous case %d in %s dropped"
+                    ptr.comment(M610, c.caseValue(), opcode);                    
+                }
+            }
+        }
+        return map;
+    }
+    
+    private void switch_(Opcode op, Label deflab, Collection<SwitchCase> cases) {
+        String defname = labelName(deflab);
+        Object opx = genericSwitch? jynx2asm.ops.JvmOp.opc_switch: op;
+        ptr.print(opx, ReservedWord.res_default, defname, ReservedWord.dot_array)
+                .nl().incrDepth();
+        long next = Integer.MIN_VALUE;
+        for (SwitchCase c : cases) {
+            int value = c.caseValue();
+            assert value >= next;		
+            var label = c.target();
+            if (genericSwitch && label == deflab) {
+            } else {
+                String labname = labelName(label);
+                ptr.print(value, ReservedWord.right_arrow, labname).nl();
+            }
+	    next = value + 1L; // next is long because value might be Integer.MAX_VALUE          
+        }
+        ptr.decrDepth().print(Directive.end_array).nl();
+    }
+
 }
