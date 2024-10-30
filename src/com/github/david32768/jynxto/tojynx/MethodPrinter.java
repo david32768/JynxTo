@@ -22,7 +22,6 @@ import java.lang.reflect.AccessFlag;
 import java.util.ArrayList;
 import java.util.List;
 
-
 import jvm.Context;
 import jynx.Directive;
 import jynx.ReservedWord;
@@ -34,6 +33,8 @@ public class MethodPrinter {
     private final JynxPrinter ptr;
 
     private final ClassDesc classDesc;
+    
+    private CodeAttribute codeAttribute;
 
     MethodPrinter(JynxPrinter ptr, ClassDesc classDesc) {
         this.ptr = ptr.copy();
@@ -50,7 +51,7 @@ public class MethodPrinter {
         }
         var cm = mm.code();
         if (cm.isPresent()) {
-            CodePrinter cp = new CodePrinter(ptr, locals(mm));
+            CodePrinter cp = new CodePrinter(ptr, codeAttribute, locals(mm));
             cp.process(cm.get());
         }
         ptr.decrDepth().print(Directive.end_method).nl();
@@ -114,7 +115,9 @@ public class MethodPrinter {
                     ++index;
                 }
             }
-            case CodeAttribute _ -> {}
+            case CodeAttribute ca -> {
+                this.codeAttribute = ca;
+            }
             default -> {
                 UnknownAttributes.unknown(ptr.copy(), attribute, Context.METHOD);
             }

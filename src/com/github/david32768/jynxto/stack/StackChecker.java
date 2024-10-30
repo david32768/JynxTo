@@ -29,7 +29,6 @@ public class StackChecker {
     private final TypeKindStack stack;
     private final Map<Label, List<TypeKind>> labelStack;
     private final List<Label> afterGotoLabels;
-    private final List<Label> jsrLabels;
 
     private boolean lastGoto;
     
@@ -38,10 +37,13 @@ public class StackChecker {
         this.stack = new TypeKindStack();
         this.labelStack = new HashMap<>();
         this.afterGotoLabels = new ArrayList<>();
-        this.jsrLabels = new ArrayList<>();
         this.lastGoto = false;
     }
 
+    public int maxStack() {
+        return stack.maxStack();
+    }
+    
     public Optional<String> stackAsString() {
         if (lastGoto) {
             return Optional.empty();
@@ -57,21 +59,17 @@ public class StackChecker {
             return Optional.empty();
         }
         var desc = stack.stream()
-                .map(StackChecker::x)
+                .map(StackChecker::descriptor)
                 .collect(Collectors.joining("", "(", ")"));
         return Optional.of(desc);
     }
     
-    private static String x(TypeKind kind) {
+    private static String descriptor(TypeKind kind) {
         return switch(kind.asLoadable()) {
             case LONG -> "J";
             case REFERENCE -> "Ljava/lang/Object;";
             default -> kind.name().substring(0, 1);
         };
-    }
-    
-    public boolean isJsrTarget(Label target) {
-        return jsrLabels.contains(target);
     }
     
     public void element(CodeElement element) {
@@ -199,6 +197,10 @@ public class StackChecker {
     
     private void adjustStackForInstruction(Instruction instruction) {
         stack.adjustForInstruction(instruction);
+        adjustTargets(instruction);
+    }
+    
+    private void adjustTargets(Instruction instruction) {
         switch (instruction) {
             case BranchInstruction inst -> {
                 branch(inst.target());
@@ -207,7 +209,6 @@ public class StackChecker {
                 var list = new ArrayList<>(stack.toList());
                 list.add(TypeKind.REFERENCE); // return address
                 branch(inst.target(), list);
-                jsrLabels.add(inst.target());
             }
             case LookupSwitchInstruction inst -> {
                 branch(inst.defaultTarget());
@@ -224,5 +225,4 @@ public class StackChecker {
             default -> {}
         }
     }
-    
 }

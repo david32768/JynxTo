@@ -48,13 +48,23 @@ public class TypeKindStack implements InstructionVisitor {
     }
     
     private final ArrayList<TypeKind> astack;
+    
+    private int maxstack;
+    private int current;
 
     public TypeKindStack() {
         this.astack = new ArrayList<>();
+        this.maxstack = 0;
+        this.current = 0;
+    }
+
+    public int maxStack() {
+        return maxstack;
     }
 
     public void clear() {
         astack.clear();
+        current = 0;
     }
     
     public boolean isEmpty() {
@@ -63,15 +73,6 @@ public class TypeKindStack implements InstructionVisitor {
     
     public List<TypeKind> toList() {
         return List.copyOf(astack);
-    }
-
-    public void set(List<TypeKind> list) {
-        if (astack.isEmpty()) {
-            astack.addAll(list);
-        } else {
-            String msg = "stack must be empty to use set()";
-            throw new IllegalStateException(msg);
-        }
     }
 
     public Stream<TypeKind> stream() {
@@ -83,8 +84,21 @@ public class TypeKindStack implements InstructionVisitor {
             return;
         }
         astack.add(typeKind.asLoadable());
+        current += typeKind.slotSize();
+        maxstack = Math.max(maxstack, current);
     }
     
+    public void set(List<TypeKind> list) {
+        if (astack.isEmpty()) {
+            for (var kind : list) {
+                pushKind(kind);
+            }
+        } else {
+            String msg = "stack must be empty to use set()";
+            throw new IllegalStateException(msg);
+        }
+    }
+
     private void pushInt() {
         pushKind(TypeKind.INT);
     }
@@ -104,7 +118,9 @@ public class TypeKindStack implements InstructionVisitor {
     
     private TypeKind pop() {
         int last = astack.size() - 1;
-        return astack.remove(last);
+        var result = astack.remove(last);
+        current -= result.slotSize();
+        return result;
     }
     
     private void popKind(TypeKind typeKind) {

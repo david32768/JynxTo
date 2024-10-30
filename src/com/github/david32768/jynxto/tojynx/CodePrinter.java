@@ -8,6 +8,7 @@ import java.lang.classfile.Instruction;
 import java.lang.classfile.Label;
 import java.lang.classfile.PseudoInstruction;
 import java.lang.classfile.TypeAnnotation;
+import java.lang.classfile.attribute.CodeAttribute;
 import java.lang.classfile.attribute.LineNumberTableAttribute;
 import java.lang.classfile.attribute.LocalVariableTableAttribute;
 import java.lang.classfile.attribute.LocalVariableTypeTableAttribute;
@@ -24,10 +25,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import static jynx.Directive.dir_limit;
 import static jynx.Global.LOG;
 import static jynx.Message.M137;
 import static jynx.Message.M167;
 import static jynx.Message.M339;
+import static jynx.ReservedWord.res_locals;
+import static jynx.ReservedWord.res_stack;
 
 import jvm.Context;
 import jvm.FrameType;
@@ -37,12 +41,18 @@ import jynx.GlobalOption;
 import jynx.LogIllegalArgumentException;
 import jynx.ReservedWord;
 
+import static jynx.Global.JVM_VERSION;
+import static jynx.Message.M608;
+import static jynx.Message.M609;
+
+import jvm.Feature;
+
 import com.github.david32768.jynxto.stack.StackChecker;
 import com.github.david32768.jynxto.utility.InstructionVisitor;
 
 public class CodePrinter {
 
-    private static final int MAXSIZE = 2*Short.MAX_VALUE + 1;
+    public static final int MAX_CODESIZE = 2*Short.MAX_VALUE + 1;
 
     private static record VTypeAnnotation(boolean visible, TypeAnnotation annotation){}
     
@@ -60,14 +70,19 @@ public class CodePrinter {
     private final Map<Label,StackMapFrameInfo> stackMapInfo;
     private final List<StackMapFrameInfo.VerificationTypeInfo> previousLocals;
     
+    private final CodeAttribute codeAttribute;
     private final StackChecker checker;
+    private final List<Label> jsrLabels;
+    
     
     private int nextlab;
     private int offset;
     private int handlerIndex;
     
-    CodePrinter(JynxPrinter ptr, List<StackMapFrameInfo.VerificationTypeInfo> initialLocals) {
-        this.ptr = ptr.nested();
+    CodePrinter(JynxPrinter ptr, CodeAttribute codeAttribute,
+            List<StackMapFrameInfo.VerificationTypeInfo> initialLocals) {
+        this.ptr = ptr.copy();
+        this.codeAttribute = codeAttribute;
         this.labelNames = new HashMap<>();
         this.vars = new ArrayList<>();
         this.varSignatures = new HashMap<>();
@@ -77,6 +92,7 @@ public class CodePrinter {
         this.varAnnotations = new ArrayList<>();
         this.stackMapInfo = new HashMap<>();
         this.previousLocals = initialLocals;
+        this.jsrLabels = new ArrayList<>();
         this.checker = new StackChecker();
         this.nextlab = 0;
         this.offset = 0;
@@ -88,14 +104,36 @@ public class CodePrinter {
     }
     
     void process(CodeModel cm) {
-        ptr.incrDepth();
+        if (JVM_VERSION().supports(Feature.subroutines)) {
+            for (var element : cm.elementList()) {
+                if (element instanceof DiscontinuedInstruction.JsrInstruction inst) {
+                    jsrLabels.add(inst.target());
+                }
+            }
+        }
+        ptr.incrDepth().incrDepth();
         process(cm.attributes(), cm.elementList());
-        ptr.decrDepth();
+        ptr.decrDepth().decrDepth();
+        int mystack = checker.maxStack();
+        if (codeAttribute == null) {
+        } else {
+            ptr.print(dir_limit, res_locals, codeAttribute.maxLocals()).nl();
+            int codestack = codeAttribute.maxStack();
+            if (codestack > mystack) {
+                // "maxstack: code (%d) >  checker (%d)"
+                ptr.comment(M608, codestack, mystack);
+            } else if (codestack < mystack) {
+                // "maxstack: code (%d) < checker (%d): %d used"
+                ptr.comment(M609, codestack, mystack, mystack);
+            }
+        }
+        ptr.print(dir_limit, res_stack, mystack).nl();
     }
+
     
     public static void printElements(Consumer<String> consumer, List<CodeElement> elements) {
         var ptr = new JynxPrinter(consumer);
-        var codeptr = new CodePrinter(ptr, Collections.emptyList());
+        var codeptr = new CodePrinter(ptr, null, Collections.emptyList());
         for (var element : elements) {
             codeptr.processElement(element);
         }
@@ -247,7 +285,7 @@ public class CodePrinter {
 
         String name = labelName(label) + ":";
         var stackStr = checker.stackAsDescriptor();
-        if (checker.isJsrTarget(label)) {
+        if (jsrLabels.contains(label)) {
             ptr.decrDepth().print(name, "; subroutine", stackStr).nl().incrDepth();
         } else {
             ptr.decrDepth().print(name, stackStr).nl().incrDepth();
@@ -341,9 +379,9 @@ public class CodePrinter {
         };
         assert size > 0;
         offset += size;
-        if (offset > MAXSIZE) {
+        if (offset > MAX_CODESIZE) {
             // "maximum code size of %d exceeded; current size = [%d,%d]"
-            throw new LogIllegalArgumentException(M339, MAXSIZE, offset, offset);
+            throw new LogIllegalArgumentException(M339, MAX_CODESIZE, offset, offset);
         }
     }
 
