@@ -116,6 +116,11 @@ public class TypeKindStack implements InstructionVisitor {
         pushKind(twoslot.top());
     }
     
+    public TypeKind peek() {
+        int last = astack.size() - 1;
+        return astack.get(last);
+    }
+    
     private TypeKind pop() {
         int last = astack.size() - 1;
         var result = astack.remove(last);

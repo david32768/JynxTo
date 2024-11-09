@@ -23,7 +23,7 @@ public class ComponentPrinter {
 
     void process(RecordComponentInfo component) {
         ptr.nl().print(Directive.dir_component, component.name(), component.descriptorSymbol());
-        ptr.nl().incrDepth();
+        ptr.setLogContext().nl().incrDepth();
         for (var attribute: component.attributes()) {
             switch(attribute) {
                 case SignatureAttribute attr -> {

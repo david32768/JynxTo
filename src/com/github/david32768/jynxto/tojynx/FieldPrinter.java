@@ -1,7 +1,6 @@
 package com.github.david32768.jynxto.tojynx;
 
-import java.lang.classfile.AccessFlags;
-import java.lang.classfile.Attribute;
+import java.lang.classfile.Attributes;
 import java.lang.classfile.FieldModel;
 import java.lang.classfile.TypeAnnotation;
 import java.lang.classfile.attribute.ConstantValueAttribute;
@@ -10,7 +9,6 @@ import java.lang.classfile.attribute.RuntimeInvisibleTypeAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleTypeAnnotationsAttribute;
 import java.lang.classfile.attribute.SignatureAttribute;
-import java.lang.reflect.AccessFlag;
 
 
 import jvm.Context;
@@ -18,7 +16,6 @@ import jynx.Directive;
 import jynx.ReservedWord;
 
 import com.github.david32768.jynxto.jynx.AccessName;
-import java.lang.classfile.Attributes;
 
 public class FieldPrinter {
 
@@ -45,7 +42,7 @@ public class FieldPrinter {
                 }
             }
         }
-        ptr.nl().incrDepth();
+        ptr.setLogContext().nl().incrDepth();
 
         int ignoredCount = 0;
         for (var attribute: fm.attributes()) {

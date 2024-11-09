@@ -17,9 +17,11 @@ import java.lang.classfile.attribute.StackMapTableAttribute;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.github.david32768.jynxto.utility.Instructions;
@@ -29,15 +31,33 @@ public class StackChecker {
     private final TypeKindStack stack;
     private final Map<Label, List<TypeKind>> labelStack;
     private final List<Label> afterGotoLabels;
+    private final Set<Label> jsrLabels;
+    private final StackMap stackMap;
 
     private boolean lastGoto;
+    private boolean subroutine;
     
-    public StackChecker() {
+    private StackChecker(Set<Label> jsrlabels, StackMap stackmap) {
 
         this.stack = new TypeKindStack();
         this.labelStack = new HashMap<>();
         this.afterGotoLabels = new ArrayList<>();
+        this.jsrLabels = jsrlabels;
         this.lastGoto = false;
+        this.subroutine = false;
+        this.stackMap = stackmap;
+    }
+
+    public static StackChecker of(StackMap stackmap) {
+        return new StackChecker(new HashSet<>(), stackmap);
+    }
+    
+    public void setJsrLabels(List<CodeElement> elements) {
+        for (var element : elements) {
+            if (element instanceof DiscontinuedInstruction.JsrInstruction inst) {
+                jsrLabels.add(inst.target());
+            }
+        }
     }
 
     public int maxStack() {
@@ -65,11 +85,27 @@ public class StackChecker {
     }
     
     private static String descriptor(TypeKind kind) {
-        return switch(kind.asLoadable()) {
+        TypeKind stacktype = kind.asLoadable();
+        return switch(stacktype) {
+            case INT -> "I";
             case LONG -> "J";
+            case FLOAT -> "F";
+            case DOUBLE -> "D";
             case REFERENCE -> "Ljava/lang/Object;";
-            default -> kind.name().substring(0, 1);
+            default -> throw new AssertionError("unexpected TypeKind for stack: " + stacktype);
         };
+    }
+    
+    public boolean isJsrLabel(Label label) {
+        return jsrLabels.contains(label);
+    }
+
+    private void checkSubroutine() {
+        if (lastGoto) {
+            subroutine = true;
+        } else if (stack.peek() != TypeKind.REFERENCE){
+            throw new IllegalStateException("subroutine top of stack is not reference");
+        }
     }
     
     public void element(CodeElement element) {
@@ -103,7 +139,7 @@ public class StackChecker {
         }
     }
 
-    private void labelBinding(Label label) {
+    private void bindLabel(Label label) {
         if (lastGoto) {
             var myStack = labelStack.get(label);
             if (myStack == null) {
@@ -124,6 +160,10 @@ public class StackChecker {
             branch(label, mystack);
         }
         afterGotoLabels.clear();
+        if (subroutine && stack.peek() != TypeKind.REFERENCE){
+            throw new IllegalStateException("subroutine top of stack is not reference");
+        }
+        subroutine = false;
     }
     
     public void check(List<TypeKind> mystack) {
@@ -134,12 +174,18 @@ public class StackChecker {
         }
     }
     
-    public void labelBinding(Label label, StackMapFrameInfo stackInfo) {
-        labelBinding(label);
-        var typeKindList = stackInfo.stack().stream()
-                .map(StackChecker::convert)
-                .toList();
-        check(typeKindList);
+    public void labelBinding(Label label) {
+        bindLabel(label);
+        var stackInfo = stackMap.stackFrameFor(label);
+        if (stackInfo != null) {
+            var typeKindList = stackInfo.stream()
+                    .map(StackChecker::convert)
+                    .toList();
+            check(typeKindList);
+        }
+        if (isJsrLabel(label)) {
+            checkSubroutine();
+        }
     }
 
     private static TypeKind convert(VerificationTypeInfo type) {
@@ -165,7 +211,11 @@ public class StackChecker {
                 String msg = String.format("opcode %s is unreachable", op);
                 throw new IllegalStateException(msg);
             }
-            setAfterLabels(Collections.emptyList()); // ASSUMPTION
+            if (subroutine) {
+                setAfterLabels(List.of(TypeKind.REFERENCE)); // ASSUMPTION
+            } else {
+                setAfterLabels(Collections.emptyList()); // ASSUMPTION
+            }
         }
         
         adjustStackForInstruction(instruction);
@@ -209,6 +259,7 @@ public class StackChecker {
                 var list = new ArrayList<>(stack.toList());
                 list.add(TypeKind.REFERENCE); // return address
                 branch(inst.target(), list);
+                jsrLabels.add(inst.target());
             }
             case LookupSwitchInstruction inst -> {
                 branch(inst.defaultTarget());

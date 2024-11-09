@@ -1,7 +1,5 @@
 package com.github.david32768.jynxto.tojynx;
 
-import com.github.david32768.jynxto.jynx.AccessName;
-import com.github.david32768.jynxto.jynx.DirectiveAccessName;
 import java.lang.classfile.AnnotationValue;
 import java.lang.classfile.Opcode;
 import java.lang.classfile.constantpool.AnnotationConstantValueEntry;
@@ -29,6 +27,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import static jynx.Global.LOG;
+import static jynx.Global.LOGGER;
+import static jynx.Message.M612;
 import static jynx.Message.M911;
 import static jynx.ReservedWordType.LABEL;
 import static jynx.ReservedWordType.NAME;
@@ -36,15 +37,33 @@ import static jynx.ReservedWordType.QUOTED;
 
 import jvm.AccessFlag;
 import jvm.HandleType;
-import static jynx.Global.LOG;
 import jynx.LogAssertionError;
-import jynx.LogMsgType;
 import jynx.Message;
 import jynx.ReservedWord;
 import jynx.ReservedWordType;
 import jynx.StringUtil;
 
+import com.github.david32768.jynxto.jynx.AccessName;
+import com.github.david32768.jynxto.jynx.DirectiveAccessName;
+
 public class JynxPrinter {
+    
+    private class Counter {
+    
+        private int count;
+
+        Counter() {
+            count = 0;
+        }
+        
+        void incr() {
+            ++count;
+        }
+        
+        int count() {
+            return count;
+        }
+    }
     
     private static final char TOKEN_SEPARATOR = ' ';
     private static final int DEPTH_UNDENT = 2;
@@ -53,26 +72,30 @@ public class JynxPrinter {
     private final StringBuilder sb;
     private final Consumer<String> consumer;
     private final int lwm;
+    private final Counter lineCounter;
     
     private int depth;
+    private boolean printNext;
 
     public JynxPrinter(Consumer<String> consumer) {
-        this(consumer, 0);
+        this(consumer, 0, null);
     }
     
-    private JynxPrinter(Consumer<String> consumer, int lwm) {
+    private JynxPrinter(Consumer<String> consumer, int lwm, Counter counter) {
         this.sb = new StringBuilder();
         this.consumer = consumer;
         this.lwm = lwm;
         this.depth = lwm;
+        this.lineCounter = counter == null? new Counter():counter;
+        this.printNext = false;
     }
     
     public JynxPrinter copy() {
-        return new JynxPrinter(consumer, depth);
+        return new JynxPrinter(consumer, depth, lineCounter);
     }
     
     public JynxPrinter nested() {
-        return new JynxPrinter(consumer, depth + 1);
+        return new JynxPrinter(consumer, depth + 1, lineCounter);
     }
     
     public JynxPrinter incrDepth() {
@@ -157,23 +180,36 @@ public class JynxPrinter {
     }
     
     public JynxPrinter nl() {
+        lineCounter.incr();
+        if (printNext) {
+            // "%s ; line %d"
+            LOG(M612, sb, lineCounter.count());
+            printNext = false;
+        }
         sb.append(NEWLINE);
         consumer.accept(sb.toString());
         sb.setLength(0);
         return this;
     }
 
+    public JynxPrinter setLogContext() {
+        // "%s ; line %d"
+        String line = M612.format(sb, lineCounter.count() + 1);
+        LOGGER().setLine(line);
+        return this;
+    }
+    
     public JynxPrinter comment(Message msg, Object... objs) {
-        if (msg.getLogtype().compareTo(LogMsgType.INFO) > 0) {
-            LOG(msg, objs);
-        }
+        LOG(msg, objs);
         assert sb.isEmpty();
         sep();
         sb.append(';');
         sep();
         String comment = msg.format(objs);
         sb.append(StringUtil.printable(comment));
-        return nl();
+        nl();
+        printNext = true;
+        return this;
     }
         
     private void printAccessName(Set<AccessFlag> flags, Optional<CharSequence> name) {

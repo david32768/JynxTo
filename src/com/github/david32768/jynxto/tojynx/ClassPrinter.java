@@ -33,10 +33,10 @@ public class ClassPrinter {
         var dirAccessName = DirectiveAccessName.of(cm,jvmVersion);
 
         if (cm.isModuleInfo()) {
-            ptr.print(dirAccessName).nl();
+            ptr.print(dirAccessName).setLogContext().nl();
             processModuleInfo(cm);
         } else {
-            ptr.print(dirAccessName).nl();
+            ptr.print(dirAccessName).setLogContext().nl();
             processClass(cm);
         }
     }

@@ -1,7 +1,5 @@
 package com.github.david32768.jynxto.tojynx;
 
-import static java.lang.classfile.attribute.StackMapFrameInfo.SimpleVerificationTypeInfo.*;
-
 import java.lang.classfile.Attribute;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.TypeAnnotation;
@@ -16,17 +14,14 @@ import java.lang.classfile.attribute.RuntimeVisibleAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleParameterAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleTypeAnnotationsAttribute;
 import java.lang.classfile.attribute.SignatureAttribute;
-import java.lang.classfile.attribute.StackMapFrameInfo;
 import java.lang.constant.ClassDesc;
-import java.lang.reflect.AccessFlag;
-import java.util.ArrayList;
-import java.util.List;
 
 import jvm.Context;
 import jynx.Directive;
 import jynx.ReservedWord;
 
 import com.github.david32768.jynxto.jynx.AccessName;
+import com.github.david32768.jynxto.stack.StackMap;
 
 public class MethodPrinter {
     
@@ -44,15 +39,18 @@ public class MethodPrinter {
     void process(MethodModel mm) {
         var accessName = AccessName.of(mm);        
         ptr.nl()
-                .print(Directive.dir_method, accessName).nl()
+                .print(Directive.dir_method, accessName)
+                .setLogContext()
+                .nl()
                 .incrDepth();
         for (var attribute : mm.attributes()) {
             processAttribute(attribute);
         }
         var cm = mm.code();
         if (cm.isPresent()) {
-            CodePrinter cp = new CodePrinter(ptr, codeAttribute, locals(mm));
-            cp.process(cm.get());
+            StackMap stackmap = StackMap.of(classDesc,mm, codeAttribute);
+            CodePrinter cp = new CodePrinter(ptr, stackmap);
+            cp.process(cm.get(), codeAttribute);
         }
         ptr.decrDepth().print(Directive.end_method).nl();
     }
@@ -124,36 +122,4 @@ public class MethodPrinter {
         }
     }
     
-    private  List<StackMapFrameInfo.VerificationTypeInfo>  locals(MethodModel mm) {
-        var parms = mm.methodTypeSymbol().parameterList();
-        List<StackMapFrameInfo.VerificationTypeInfo> result = new ArrayList<>();
-        if (!mm.flags().has(AccessFlag.STATIC)) {
-            String mname = mm.methodName().stringValue();
-            if (mname.equals("<init>")) {
-                result.add(UNINITIALIZED_THIS);
-            } else {
-                result.add(verificationTypeInfoOf(classDesc));
-            }
-        }
-        for (var parm : parms) {
-            result.add(verificationTypeInfoOf(parm));
-        }
-        return result;
-    }
-    
-    public static  StackMapFrameInfo.VerificationTypeInfo verificationTypeInfoOf(ClassDesc desc) {
-        if (desc.isPrimitive()) {
-            String primitive = desc.descriptorString();
-            assert primitive.length() == 1;
-            char first = primitive.charAt(0);
-            return switch (first) {
-                case 'J' -> LONG;
-                case 'F' -> FLOAT;
-                case 'D' -> DOUBLE;
-                default -> INTEGER;
-            };
-        } else {
-            return StackMapFrameInfo.ObjectVerificationTypeInfo.of(desc);
-        }        
-    }
 }
