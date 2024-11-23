@@ -33,7 +33,7 @@ import static jynx.Message.M193;
 import static jynx.Message.M22;
 import static jynx.Message.M137;
 import static jynx.Message.M167;
-import static jynx.Message.M339;
+import static jynx.Message.M608;
 import static jynx.ReservedWord.res_locals;
 import static jynx.ReservedWord.res_stack;
 
@@ -52,8 +52,6 @@ import com.github.david32768.jynxto.utility.InstructionVisitor;
 
 public class CodePrinter {
 
-    public static final int MAX_CODESIZE = 2*Short.MAX_VALUE + 1;
-
     private static record VTypeAnnotation(boolean visible, TypeAnnotation annotation){}
     
     private static record Varxyzn(int slot, Label start, Label end, String name) {}
@@ -69,14 +67,15 @@ public class CodePrinter {
         
     private final StackChecker checker;
     private final StackMap stackMap;
+    private final boolean printStack;
 
     private List<VerificationTypeInfo> previousLocals;
     private int nextlab;
-    private int offset;
     private int handlerIndex;
     
-    CodePrinter(JynxPrinter ptr, StackMap stackmap) {
+    CodePrinter(JynxPrinter ptr, StackMap stackmap, boolean printstack) {
         this.ptr = ptr.copy();
+        this.printStack = printstack;
         this.labelNames = new HashMap<>();
         this.vars = new ArrayList<>();
         this.varSignatures = new HashMap<>();
@@ -89,12 +88,15 @@ public class CodePrinter {
         this.stackMap = stackmap;
         this.checker = StackChecker.of(this.stackMap);
         this.nextlab = 0;
-        this.offset = 0;
         this.handlerIndex = 0;
     }
 
     private String labelName(Label label) {
-        return labelNames.computeIfAbsent(label, lab -> "@L" + nextlab++);
+        return labelNames.computeIfAbsent(label, lab -> newLabel());
+    }
+    
+    private String newLabel() {
+        return "@L" + nextlab++;
     }
     
     void process(CodeModel cm, CodeAttribute codeAttribute) {
@@ -122,7 +124,7 @@ public class CodePrinter {
     
     public static void printElements(Consumer<String> consumer, List<CodeElement> elements) {
         var ptr = new JynxPrinter(consumer);
-        var codeptr = new CodePrinter(ptr, StackMap.NONE);
+        var codeptr = new CodePrinter(ptr, StackMap.NONE, true);
         for (var element : elements) {
             codeptr.processElement(element);
         }
@@ -175,9 +177,12 @@ public class CodePrinter {
             case Instruction inst -> {
                 processInstruction(inst);
                 checker.instruction(inst);
-                var stackStr = checker.stackAsString();
-                if (stackStr.isPresent()) {
-                    ptr.incrDepth().print("; stack = ", stackStr).nl().decrDepth();
+                if (printStack) {
+                    var stackStr = checker.stackAsString();
+                    if (stackStr.isPresent()) {
+                        // "bci -> %d stack -> %s"
+                        ptr.incrDepth().comment(M608, checker.offset(), stackStr.orElseThrow()).decrDepth();
+                    }
                 }
             }
             case PseudoInstruction pseudo -> {
@@ -244,7 +249,7 @@ public class CodePrinter {
             case CharacterRange _ -> {} // ? whats this
             case LineNumber inst -> {
                 int line = inst.line();
-                ptr.decrDepth().print(Directive.dir_line, line).incrDepth().nl();
+                ptr.decrDepth().print(Directive.dir_line, line).nl().incrDepth();
             }
             case LocalVariable lv -> {
                 vars.add(lv);
@@ -263,11 +268,11 @@ public class CodePrinter {
 
         String name = labelName(label) + ":";
         if (checker.isJsrLabel(label)) {
-            ptr.decrDepth().print(name, "; subroutine", checker.stackAsString()).nl().incrDepth();
+            ptr.decrDepth().print(name, "; subroutine", checker.stackAsString());
         } else {
-            ptr.decrDepth().print(name, checker.stackAsDescriptor()).nl().incrDepth();
+            ptr.decrDepth().print(name, checker.stackAsDescriptor());
         }
-        
+        ptr.print(bciComment()).nl().incrDepth();
         var annotations = labelAnnotation.remove(label);
         if (annotations != null) {
             pendingAnnotation.addAll(annotations);
@@ -356,22 +361,9 @@ public class CodePrinter {
         }
         pendingAnnotation.clear();
         ptr.decrDepth();
-        int size = sizeOfAt(instruction, offset);
-        assert size > 0;
-        offset += size;
-        if (offset > MAX_CODESIZE) {
-            // "maximum code size of %d exceeded; current size = [%d,%d]"
-            throw new LogIllegalArgumentException(M339, MAX_CODESIZE, offset, offset);
-        }
     }
 
-    private static int sizeOfAt(Instruction instruction, int offset) {
-        var op = instruction.opcode();
-        int padding = 3 - (offset & 3);
-        return switch(instruction) {
-            case LookupSwitchInstruction swinst -> 1 + padding + 4 + 4 + 8*swinst.cases().size();                    
-            case TableSwitchInstruction swinst -> 1 + padding + 4 + 4 + 4 + 4*swinst.cases().size();
-            default -> op.sizeIfFixed();
-        };
+    private String bciComment() {
+        return "; bci=" + checker.offset();
     }
 }

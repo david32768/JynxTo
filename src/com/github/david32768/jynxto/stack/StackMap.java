@@ -26,7 +26,7 @@ public class StackMap {
     
 
     private StackMap(Map<Label,StackMapFrameInfo> stackMapInfo, List<StackMapFrameInfo.VerificationTypeInfo> initialLocals) {
-        this.stackMapInfo = stackMapInfo; //getStackMap(attr);
+        this.stackMapInfo = stackMapInfo;
         this.initialLocals = initialLocals;
     }
     

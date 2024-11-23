@@ -28,6 +28,8 @@ import com.github.david32768.jynxto.utility.Instructions;
 
 public class StackChecker {
 
+    private static final int MAX_CODESIZE = 2*Short.MAX_VALUE + 1;
+
     private final TypeKindStack stack;
     private final Map<Label, List<TypeKind>> labelStack;
     private final List<Label> afterGotoLabels;
@@ -36,6 +38,8 @@ public class StackChecker {
 
     private boolean lastGoto;
     private boolean subroutine;
+    private int offset;
+    private boolean lastLabel;
     
     private StackChecker(Set<Label> jsrlabels, StackMap stackmap) {
 
@@ -46,6 +50,8 @@ public class StackChecker {
         this.lastGoto = false;
         this.subroutine = false;
         this.stackMap = stackmap;
+        this.offset = 0;
+        this.lastLabel = false;
     }
 
     public static StackChecker of(StackMap stackmap) {
@@ -62,6 +68,10 @@ public class StackChecker {
 
     public int maxStack() {
         return stack.maxStack();
+    }
+
+    public boolean isLastLabel() {
+        return lastLabel;
     }
     
     public Optional<String> stackAsString() {
@@ -82,6 +92,10 @@ public class StackChecker {
                 .map(StackChecker::descriptor)
                 .collect(Collectors.joining("", "(", ")"));
         return Optional.of(desc);
+    }
+
+    public int offset() {
+        return offset;
     }
     
     private static String descriptor(TypeKind kind) {
@@ -139,20 +153,6 @@ public class StackChecker {
         }
     }
 
-    private void bindLabel(Label label) {
-        if (lastGoto) {
-            var myStack = labelStack.get(label);
-            if (myStack == null) {
-                afterGotoLabels.add(label);
-            } else {
-                setAfterLabels(myStack);
-            }
-        } else {
-            branch(label);
-        }
-        
-    }
-
     private void setAfterLabels(List<TypeKind> mystack) {
         lastGoto = false;
         stack.set(mystack);
@@ -188,6 +188,20 @@ public class StackChecker {
         }
     }
 
+    private void bindLabel(Label label) {
+        lastLabel = true;
+        if (lastGoto) {
+            var myStack = labelStack.get(label);
+            if (myStack == null) {
+                afterGotoLabels.add(label);
+            } else {
+                setAfterLabels(myStack);
+            }
+        } else {
+            branch(label);
+        }
+    }
+
     private static TypeKind convert(VerificationTypeInfo type) {
         return switch(type) {
             case StackMapFrameInfo.SimpleVerificationTypeInfo simple -> {
@@ -204,6 +218,7 @@ public class StackChecker {
     }
     
     public void instruction(Instruction instruction) {
+        lastLabel = false;
         var op = instruction.opcode();
         
         if (lastGoto) {
@@ -218,6 +233,15 @@ public class StackChecker {
             }
         }
         
+        int size = Instructions.sizeOfAt(instruction, offset);
+        assert size > 0;
+        offset += size;
+        if (offset > MAX_CODESIZE) {
+            String msg = String.format("maximum code size of %d exceeded; current size = [%d,%d]",
+                    MAX_CODESIZE, offset, offset);
+            throw new IllegalArgumentException(msg);
+        }
+
         adjustStackForInstruction(instruction);
         
         if (Instructions.isUnconditional(op)) {

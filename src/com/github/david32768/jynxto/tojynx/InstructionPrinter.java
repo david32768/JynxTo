@@ -153,10 +153,12 @@ public class InstructionPrinter extends AbstractOpcodeVisitor {
         }
     }
 
+    private static final int MAX_CODESIZE = 2*Short.MAX_VALUE + 1;
+        
     private final int SWITCH_OVERHEAD = 1 + 2 + 1 + 4 + 1;
     // iload_ + padding + op + default + (cases) + return
     
-    private final int MAX_LOOKUP_ENTRIES = (CodePrinter.MAX_CODESIZE - (SWITCH_OVERHEAD + 4))/8; // = 8190
+    private final int MAX_LOOKUP_ENTRIES = (MAX_CODESIZE - (SWITCH_OVERHEAD + 4))/8; // = 8190
     
     @Override
     public void lookupSwitch(Opcode op, LookupSwitchInstruction inst) {
@@ -204,7 +206,7 @@ public class InstructionPrinter extends AbstractOpcodeVisitor {
         ptr.print(op, type).nl();
     }
 
-    private final int MAX_TABLE_ENTRIES = (CodePrinter.MAX_CODESIZE - (SWITCH_OVERHEAD + 4 + 4))/4; // = 16379
+    private final int MAX_TABLE_ENTRIES = (MAX_CODESIZE - (SWITCH_OVERHEAD + 4 + 4))/4; // = 16379
     
     @Override
     public void tableSwitch(Opcode op, TableSwitchInstruction inst) {

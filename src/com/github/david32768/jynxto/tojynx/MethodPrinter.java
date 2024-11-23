@@ -16,6 +16,9 @@ import java.lang.classfile.attribute.RuntimeVisibleTypeAnnotationsAttribute;
 import java.lang.classfile.attribute.SignatureAttribute;
 import java.lang.constant.ClassDesc;
 
+import static jynx.Global.OPTION;
+import static jynx.GlobalOption.SKIP_STACK;
+
 import jvm.Context;
 import jynx.Directive;
 import jynx.ReservedWord;
@@ -49,7 +52,7 @@ public class MethodPrinter {
         var cm = mm.code();
         if (cm.isPresent()) {
             StackMap stackmap = StackMap.of(classDesc,mm, codeAttribute);
-            CodePrinter cp = new CodePrinter(ptr, stackmap);
+            CodePrinter cp = new CodePrinter(ptr, stackmap, !OPTION(SKIP_STACK));
             cp.process(cm.get(), codeAttribute);
         }
         ptr.decrDepth().print(Directive.end_method).nl();

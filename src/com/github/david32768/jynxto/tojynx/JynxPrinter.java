@@ -45,6 +45,7 @@ import jynx.StringUtil;
 
 import com.github.david32768.jynxto.jynx.AccessName;
 import com.github.david32768.jynxto.jynx.DirectiveAccessName;
+import jynx.LogMsgType;
 
 public class JynxPrinter {
     
@@ -200,7 +201,6 @@ public class JynxPrinter {
     }
     
     public JynxPrinter comment(Message msg, Object... objs) {
-        LOG(msg, objs);
         assert sb.isEmpty();
         sep();
         sb.append(';');
@@ -208,7 +208,10 @@ public class JynxPrinter {
         String comment = msg.format(objs);
         sb.append(StringUtil.printable(comment));
         nl();
-        printNext = true;
+        if (msg.getLogtype() != LogMsgType.BLANK) {
+            LOG(msg, objs);
+            printNext = true;
+        }
         return this;
     }
         

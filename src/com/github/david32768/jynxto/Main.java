@@ -21,10 +21,10 @@ public class Main {
             appUsage();
             System.exit(1);
         }
-        if (args[0].equals(MainOption.DISASSEMBLY.extname())) {
+        if (args[0].equals(MainOption.TOJYNX.extname())) {
             args = Arrays.copyOfRange(args, 1, args.length);
         }
-        MainOption main = MainOption.DISASSEMBLY; 
+        MainOption main = MainOption.TOJYNX; 
         Global.newGlobal(main);
         Optional<String> optpath = Global.setOptions(args);
         if (LOGGER().numErrors() != 0 || optpath.isEmpty()) {
@@ -39,7 +39,7 @@ public class Main {
     
     private static void appUsage() {
         LOG(M12); // "%nUsage:%n"
-        MainOption.DISASSEMBLY.appUsage();
+        MainOption.TOJYNX.appUsage();
     }
 
 }

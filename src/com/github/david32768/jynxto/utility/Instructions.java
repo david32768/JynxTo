@@ -2,9 +2,12 @@ package com.github.david32768.jynxto.utility;
 
 import static java.lang.classfile.Opcode.*;
 
-import java.lang.classfile.Opcode;
+import java.lang.classfile.Instruction;
 import java.lang.classfile.instruction.BranchInstruction;
+import java.lang.classfile.instruction.LookupSwitchInstruction;
 import java.lang.classfile.instruction.OperatorInstruction;
+import java.lang.classfile.instruction.TableSwitchInstruction;
+import java.lang.classfile.Opcode;
 import java.util.EnumSet;
 import java.util.stream.Stream;
 
@@ -73,4 +76,34 @@ public class Instructions {
     public static boolean isUnconditional(Opcode op) {
         return UNCONDITIONAL.contains(op);
     }
+
+    public static int sizeOfAt(Instruction instruction, int offset) {
+        var op = instruction.opcode();
+        int padding = 3 - (offset & 3);
+        return switch(instruction) {
+            case LookupSwitchInstruction swinst -> 1 + padding + 4 + 4 + 8*swinst.cases().size();                    
+            case TableSwitchInstruction swinst -> 1 + padding + 4 + 4 + 4 + 4*swinst.cases().size();
+            default -> op.sizeIfFixed();
+        };
+    }
+
+    private static final int GOTO_W_SIZE = Opcode.GOTO_W.sizeIfFixed();
+    private static final int JSR_WIDEN_COST = Opcode.JSR_W.sizeIfFixed() - Opcode.JSR.sizeIfFixed();
+    private static final int GOTO_WIDEN_COST = Opcode.GOTO_W.sizeIfFixed() - Opcode.GOTO.sizeIfFixed();
+    
+    public static int largeBranchAdjustment(Instruction instruction, int offset) {
+        var op = instruction.opcode();
+        int padding = 3 - (offset & 3);
+        int extrapadding = 3 - padding; // in case long branches converted to short
+        return switch(op) {
+            case TABLESWITCH -> extrapadding;
+            case LOOKUPSWITCH -> extrapadding;
+            case JSR -> JSR_WIDEN_COST;
+            case JSR_W -> 0;
+            case GOTO -> GOTO_WIDEN_COST;
+            case GOTO_W -> 0;
+            default -> instruction instanceof BranchInstruction? GOTO_W_SIZE: 0;
+        };
+    }
+
 }
