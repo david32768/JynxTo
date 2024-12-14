@@ -1,9 +1,9 @@
-Requires Java24-ea+24 preview (java.lang.classfile)
+Requires Java24-ea+27 (java.lang.classfile)
 
 Uses java.lang.classfile to produce Jynx file from Java class file.
 After each instruction there is a comment of the current stack state and bci unless option SKIP-STACK is used.
 
-Uses module com.github.david32768x.Jynx (V23 branch) and hence also requires ASM.
+Uses module com.github.david32768x.Jynx and hence also requires ASM.
 
 #Limitation
 

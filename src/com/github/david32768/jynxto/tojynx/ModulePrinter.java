@@ -1,6 +1,5 @@
 package com.github.david32768.jynxto.tojynx;
 
-import com.github.david32768.jynxto.jynx.AccessName;
 import java.lang.classfile.Attribute;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.attribute.ModuleAttribute;
@@ -18,6 +17,8 @@ import jvm.StandardAttribute;
 import jynx.Directive;
 import jynx.ReservedWord;
 
+import com.github.david32768.jynxto.jynx.AccessName;
+
 
 public class ModulePrinter extends ClassHeaderPrinter {
     
@@ -32,7 +33,7 @@ public class ModulePrinter extends ClassHeaderPrinter {
     void process(ClassModel cm) {
         ptr.incrDepth();
         for (var attribute : cm.attributes()) {
-            String name = attribute.attributeName();
+            String name = attribute.attributeName().stringValue();
             var standard = StandardAttribute.getInstance(name);
             if (standard != null && standard.inContext(Context.CLASS) && standard.inContext(Context.MODULE)) {
                 boolean processed = processClassAttribute(attribute);

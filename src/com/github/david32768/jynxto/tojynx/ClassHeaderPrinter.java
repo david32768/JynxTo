@@ -43,7 +43,7 @@ public class ClassHeaderPrinter {
         for (var attribute : cm.attributes()) {
             boolean processed = processClassAttribute(attribute);
             if(!processed && attribute instanceof UnknownAttribute uattr) {
-                if (OPTION(VALHALLA) && uattr.attributeName().equals(LOADABLE)) {
+                if (OPTION(VALHALLA) && uattr.attributeName().stringValue().equals(LOADABLE)) {
                     ptr.print(";", LOADABLE, ReservedWord.dot_array).nl()
                             .incrDepth();
                     var cp = cm.constantPool();

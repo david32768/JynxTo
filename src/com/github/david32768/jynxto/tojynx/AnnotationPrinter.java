@@ -41,13 +41,13 @@ public class AnnotationPrinter {
         ptr.print(Directive.end_annotation).nl();
     }
 
-    void processRuntimeTypeAnnotation(boolean visible, TypeAnnotation annotation) {
+    void processRuntimeTypeAnnotation(boolean visible, TypeAnnotation typeAnnotation) {
         if (omit) {
             return;
         }
-        processTypeHeader(visible, annotation);
+        processTypeHeader(visible, typeAnnotation);
         ptr.nl();
-        processAnnotation(annotation);
+        processAnnotation(typeAnnotation.annotation());
         ptr.print(Directive.end_annotation).nl();
     }
 
@@ -86,13 +86,13 @@ public class AnnotationPrinter {
         ptr.print(Directive.end_annotation).nl();
     }
     
-    void processLocalVarAnnotation(boolean visible, TypeAnnotation annotation, Map<Label,String> labelNames) {
+    void processLocalVarAnnotation(boolean visible, TypeAnnotation typeAnnotation, Map<Label,String> labelNames) {
         if (omit) {
             return;
         }
-        processTypeHeader(visible, annotation);
+        processTypeHeader(visible, typeAnnotation);
         ptr.print(ReservedWord.dot_array).nl().incrDepth().incrDepth();
-        var target = (TypeAnnotation.LocalVarTarget)annotation.targetInfo();
+        var target = (TypeAnnotation.LocalVarTarget)typeAnnotation.targetInfo();
         for (var info : target.table()) {
             var start = labelNames.get(info.startLabel());
             var end = labelNames.get(info.endLabel());
@@ -101,15 +101,15 @@ public class AnnotationPrinter {
             ptr.print(info.index(), start, end).nl();
         }
         ptr.decrDepth().print(Directive.end_array).nl().decrDepth();
-        processAnnotation(annotation);
+        processAnnotation(typeAnnotation.annotation());
         ptr.print(Directive.end_annotation).nl();
     }
     
-    private void processTypeHeader(boolean visible, TypeAnnotation annotation) {
+    private void processTypeHeader(boolean visible, TypeAnnotation typeAnnotation) {
         ReservedWord visibility = visible? ReservedWord.res_visible: ReservedWord.res_invisible;
-        var className = annotation.className();
-        var targetInfo = annotation.targetInfo();
-        var targetPath = annotation.targetPath();
+        var className = typeAnnotation.annotation().className();
+        var targetInfo = typeAnnotation.targetInfo();
+        var targetPath = typeAnnotation.targetPath();
         var targetType = targetInfo.targetType();
         var type = TypeRef.fromJVM(targetType.targetTypeValue());
         ptr.print(type.getDirective(), visibility);
@@ -183,7 +183,7 @@ public class AnnotationPrinter {
     private void processValue(AnnotationValue value) {
         switch(value) {
             case AnnotationValue.OfAnnotation val -> {
-                ptr.print(val.tag(),
+                ptr.print((char)val.tag(),
                         val.annotation().className(),
                         ReservedWord.equals_sign,
                         ReservedWord.dot_annotation
@@ -195,19 +195,19 @@ public class AnnotationPrinter {
                 processArray(val);
             }
             case AnnotationValue.OfConstant val -> {
-                ptr.print(val.tag(),
+                ptr.print((char)val.tag(),
                         ReservedWord.equals_sign,
                         val
                 ).nl();
             }
             case AnnotationValue.OfClass val -> {
-                ptr.print(val.tag(),
+                ptr.print((char)val.tag(),
                         ReservedWord.equals_sign,
                         val.className()
                 ).nl();
             }
             case AnnotationValue.OfEnum val -> {
-                ptr.print(val.tag(),
+                ptr.print((char)val.tag(),
                         val.className(),
                         ReservedWord.equals_sign,
                         val.constantName()
@@ -246,7 +246,7 @@ public class AnnotationPrinter {
                 processEnumArray(value);
             }
             default -> {
-                ptr.print(ReservedWord.left_array.toString() + type.tag(),
+                ptr.print(ReservedWord.left_array.toString() + (char)type.tag(),
                         ReservedWord.equals_sign,
                         ReservedWord.dot_array
                 ).nl().incrDepth();
@@ -262,7 +262,7 @@ public class AnnotationPrinter {
 
     private void processAnnotationArray(AnnotationValue.OfArray value) {
         var anno0 = (AnnotationValue.OfAnnotation)value.values().getFirst();
-        ptr.print(ReservedWord.left_array.toString() + anno0.tag(),
+        ptr.print(ReservedWord.left_array.toString() + (char)anno0.tag(),
                 anno0.annotation().className(),
                 ReservedWord.equals_sign,
                 ReservedWord.dot_annotation_array
@@ -276,7 +276,7 @@ public class AnnotationPrinter {
 
     private void processEnumArray(AnnotationValue.OfArray value) {
         var enum0 = (AnnotationValue.OfEnum)value.values().getFirst();
-        ptr.print(ReservedWord.left_array.toString() + enum0.tag(),
+        ptr.print(ReservedWord.left_array.toString() + (char)enum0.tag(),
                 enum0.className(),
                 ReservedWord.equals_sign,
                 ReservedWord.dot_array
