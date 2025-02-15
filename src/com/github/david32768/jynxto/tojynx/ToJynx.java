@@ -21,11 +21,14 @@ import jynx.GlobalOption;
 
 public class ToJynx {
 
-    public static void toJynx(String file) throws IOException {
+    public static boolean toJynx(PrintWriter pw, String file) throws IOException {
         byte[] bytes = ClassUtil.getClassBytes(file);
         ClassFile classfile = classFile();
         ClassModel cm = classfile.parse(bytes);
-
+        if (Global.OPTION(GlobalOption.DEBUG)) {
+            var debug = cm.toDebugString();
+            System.err.println(debug);
+        }
         boolean hasStackMap = hasStackMap(cm);        
         if (!hasStackMap && !Global.OPTION(GlobalOption.SKIP_FRAMES)) {
             var optcm = addStackMap(classfile, cm);
@@ -39,7 +42,8 @@ public class ToJynx {
         if (version == JvmVersion.V1_6JSR && hasStackMap) {
             version = JvmVersion.V1_6;
         }
-        toJynx(cm, version);
+        toJynx(pw, cm, version);
+	return true;
     }
 
     private static ClassFile classFile() {
@@ -90,13 +94,16 @@ public class ToJynx {
     }
     
     public static void toJynx(ClassModel cm, JvmVersion version) {
-
         try (PrintWriter pw = new PrintWriter(System.out)) {
-            JynxPrinter ptr = new JynxPrinter(pw::print);
-            Global.setJvmVersion(version);
-            ClassPrinter cp = new ClassPrinter(ptr, version);
-            cp.process(cm);
+            toJynx(pw, cm, version);
         }
+    }
+
+    private static void toJynx(PrintWriter pw, ClassModel cm, JvmVersion version) {
+        JynxPrinter ptr = new JynxPrinter(pw::print);
+        Global.setJvmVersion(version);
+        ClassPrinter cp = new ClassPrinter(ptr, version);
+        cp.process(cm);
     }
 
 }

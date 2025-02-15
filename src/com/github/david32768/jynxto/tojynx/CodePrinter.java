@@ -34,6 +34,9 @@ import static jynx.Message.M22;
 import static jynx.Message.M137;
 import static jynx.Message.M167;
 import static jynx.Message.M608;
+import static jynx.Message.M613;
+import static jynx.Message.M614;
+import static jynx.Message.M615;
 import static jynx.ReservedWord.res_locals;
 import static jynx.ReservedWord.res_stack;
 
@@ -49,6 +52,8 @@ import jynx.ReservedWord;
 import com.github.david32768.jynxto.stack.StackChecker;
 import com.github.david32768.jynxto.stack.StackMap;
 import com.github.david32768.jynxto.utility.InstructionVisitor;
+import java.util.HashSet;
+import java.util.Set;
 
 public class CodePrinter {
 
@@ -64,7 +69,13 @@ public class CodePrinter {
     private final Map<Label, List<VTypeAnnotation>> labelAnnotation;
     private final List<VTypeAnnotation> pendingAnnotation;
     private final List<VTypeAnnotation> varAnnotations;
-        
+    private final Map<Label,List<LocalVariable>> startvars;
+    private final Map<Label,List<LocalVariable>> endvars;
+    private final Map<Label,List<ExceptionCatch>> startCatch;
+    private final Map<Label,List<ExceptionCatch>> endCatch;
+    private final Map<Label,List<ExceptionCatch>> handleCatch;
+    private final Set<ExceptionCatch> currentCatch;
+    
     private final StackChecker checker;
     private final StackMap stackMap;
     private final boolean printStack;
@@ -72,6 +83,7 @@ public class CodePrinter {
     private List<VerificationTypeInfo> previousLocals;
     private int nextlab;
     private int handlerIndex;
+    private LocalVariable[] localTable; 
     
     CodePrinter(JynxPrinter ptr, StackMap stackmap, boolean printstack) {
         this.ptr = ptr.copy();
@@ -85,10 +97,17 @@ public class CodePrinter {
         this.varAnnotations = new ArrayList<>();
         this.previousLocals = Collections.emptyList();  // to print first stackmap in full
                                                         // or use stackmap.initialLocals() for changws
+        this.startvars = new HashMap<>();
+        this.endvars = new HashMap<>();
+        this.startCatch = new HashMap<>();
+        this.endCatch = new HashMap<>();
+        this.handleCatch = new HashMap<>();
+        this.currentCatch = new HashSet<>();
         this.stackMap = stackmap;
         this.checker = StackChecker.of(this.stackMap);
         this.nextlab = 0;
         this.handlerIndex = 0;
+        this.localTable = null;
     }
 
     private String labelName(Label label) {
@@ -106,6 +125,7 @@ public class CodePrinter {
             checker.setJsrLabels(cm.elementList());
         }
         ptr.incrDepth().incrDepth();
+        localTable = new LocalVariable[codeAttribute.maxLocals()];
         process(cm.attributes(), cm.elementList());
         ptr.decrDepth().decrDepth();
         int mystack = checker.maxStack();
@@ -227,7 +247,7 @@ public class CodePrinter {
             case TypeAnnotation.CatchTarget t -> {
                 exceptAnnotation.computeIfAbsent(t.exceptionTableIndex(), i -> new ArrayList<>()).add(type);
             }
-            case TypeAnnotation.LocalVarTarget t -> {
+            case TypeAnnotation.LocalVarTarget _ -> {
                 varAnnotations.add(type);
             }
             default -> {
@@ -242,6 +262,10 @@ public class CodePrinter {
             case ExceptionCatch handler -> {
                 processHandler(handler);
                 checker.element(handler);
+                startCatch.computeIfAbsent(handler.tryStart(), k -> new ArrayList<>()).add(handler);
+                startCatch.computeIfAbsent(handler.tryStart(), k -> new ArrayList<>()).add(handler);
+                endCatch.computeIfAbsent(handler.tryEnd(), k -> new ArrayList<>()).add(handler);
+                handleCatch.computeIfAbsent(handler.handler(), k -> new ArrayList<>()).add(handler);
             }
             case LabelTarget target -> {
                 processLabel(target);
@@ -253,6 +277,8 @@ public class CodePrinter {
             }
             case LocalVariable lv -> {
                 vars.add(lv);
+                startvars.computeIfAbsent(lv.startScope(), k -> new ArrayList<>()).add(lv);
+                endvars.computeIfAbsent(lv.endScope(), k -> new ArrayList<>()).add(lv);
             }
             case LocalVariableType lvt -> {
                 var key = new Varxyzn(lvt.slot(), lvt.startScope(), lvt.endScope(), lvt.name().stringValue());
@@ -264,6 +290,17 @@ public class CodePrinter {
 
     private void processLabel(LabelTarget target) {
         var label = target.label();
+        
+        var endlv = endvars.getOrDefault(label, Collections.emptyList());
+        for (var lv : endlv) {
+            localTable[lv.slot()] = null;
+        }
+        var startlv = startvars.getOrDefault(label, Collections.emptyList());
+        for (var lv : startlv) {
+            assert localTable[lv.slot()] == null;
+            localTable[lv.slot()] = lv;
+        }
+        
         checker.labelBinding(label);
 
         String name = labelName(label) + ":";
@@ -273,6 +310,31 @@ public class CodePrinter {
             ptr.decrDepth().print(name, checker.stackAsDescriptor());
         }
         ptr.print(bciComment()).nl().incrDepth();
+        if (printStack) {
+            var exlist = endCatch.getOrDefault(label, Collections.emptyList());
+            for (var ex : exlist) {
+                currentCatch.remove(ex);
+            }
+            exlist = startCatch.getOrDefault(label, Collections.emptyList());
+            for (var ex : exlist) {
+                currentCatch.add(ex);
+            }
+            var handlers = handleCatch.getOrDefault(label, Collections.emptyList());
+            boolean allfound = false;
+            for (var handler : handlers) {
+                boolean isall = handler.catchType().isEmpty();
+                if (allfound && isall) {
+                    continue;
+                }
+                allfound = isall;
+                // "%s handler"
+                ptr.comment(M615, catchType(handler));
+            }
+            for (var ex : currentCatch) {
+                // "%s handled at %s"
+                ptr.comment(M614, catchType(ex), labelName(ex.handler()));
+            }
+        }
         var annotations = labelAnnotation.remove(label);
         if (annotations != null) {
             pendingAnnotation.addAll(annotations);
@@ -308,10 +370,7 @@ public class CodePrinter {
     }
     
     private void processHandler(ExceptionCatch handler) {
-        String type = handler.catchType()
-                .map(ce -> ce.asInternalName())
-                .orElse(ReservedWord.res_all.toString());
-        ptr.decrDepth().print(Directive.dir_catch, type,
+        ptr.decrDepth().print(Directive.dir_catch, catchType(handler),
                 ReservedWord.res_from, labelName(handler.tryStart()),
                 ReservedWord.res_to, labelName(handler.tryEnd()),
                 ReservedWord.res_using, labelName(handler.handler())
@@ -324,6 +383,13 @@ public class CodePrinter {
             }
         }
         ++handlerIndex;
+    }
+
+    private String catchType(ExceptionCatch handler) {
+        return handler.catchType()
+                .map(ce -> ce.asInternalName())
+                .orElse(ReservedWord.res_all.toString());
+        
     }
     
     private void processStackMap(ReservedWord res, StackMapFrameInfo.VerificationTypeInfo typeInfo) {
@@ -355,6 +421,18 @@ public class CodePrinter {
         var instptr = new InstructionPrinter(ptr, this::labelName);
         InstructionVisitor.visit(instptr, instruction);
         ptr.incrDepth();
+        if (printStack) {
+            LocalVariable lv = switch(instruction) {
+                case LoadInstruction ldinst -> localTable[ldinst.slot()];
+                case StoreInstruction stinst -> localTable[stinst.slot()];
+                case IncrementInstruction incinst -> localTable[incinst.slot()];
+                default -> null;
+            };
+            if (lv != null) {
+                // "slot %d name = %s type = %s"
+                ptr.comment(M613, lv.slot(), lv.name(), lv.type().stringValue());
+            }
+        }
         AnnotationPrinter ap = new AnnotationPrinter(ptr);
         for (var annotation: pendingAnnotation) {
             ap.processRuntimeTypeAnnotation(annotation.visible(), annotation.annotation());

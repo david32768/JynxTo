@@ -1,6 +1,7 @@
 package com.github.david32768.jynxto;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Optional;
 
@@ -33,8 +34,11 @@ public class Main {
             System.exit(1);
         }
         String path = optpath.orElseThrow();
-        ToJynx.toJynx(path);
-        Global.END_MESSAGES(path);
+        try (PrintWriter pw = new PrintWriter(System.out)) {
+            boolean success = ToJynx.toJynx(pw, path);
+            Global.END_MESSAGES(path);
+        }
+        
     }
     
     private static void appUsage() {
