@@ -1,13 +1,8 @@
 package com.github.david32768.jynxto.tojynx;
 
+import java.lang.classfile.instruction.*;
+
 import java.lang.classfile.Attribute;
-import java.lang.classfile.CodeModel;
-import java.lang.classfile.CodeElement;
-import java.lang.classfile.CustomAttribute;
-import java.lang.classfile.Instruction;
-import java.lang.classfile.Label;
-import java.lang.classfile.PseudoInstruction;
-import java.lang.classfile.TypeAnnotation;
 import java.lang.classfile.attribute.CodeAttribute;
 import java.lang.classfile.attribute.LineNumberTableAttribute;
 import java.lang.classfile.attribute.LocalVariableTableAttribute;
@@ -17,7 +12,14 @@ import java.lang.classfile.attribute.RuntimeVisibleTypeAnnotationsAttribute;
 import java.lang.classfile.attribute.StackMapFrameInfo;
 import java.lang.classfile.attribute.StackMapFrameInfo.VerificationTypeInfo;
 import java.lang.classfile.attribute.StackMapTableAttribute;
-import java.lang.classfile.instruction.*;
+import java.lang.classfile.CodeElement;
+import java.lang.classfile.CodeModel;
+import java.lang.classfile.CustomAttribute;
+import java.lang.classfile.Instruction;
+import java.lang.classfile.Label;
+import java.lang.classfile.PseudoInstruction;
+import java.lang.classfile.TypeAnnotation;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.function.Consumer;
@@ -26,34 +28,33 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static jynx.Directive.dir_limit;
-import static jynx.Global.JVM_VERSION;
-import static jynx.Global.LOG;
-import static jynx.Message.M193;
-import static jynx.Message.M22;
-import static jynx.Message.M137;
-import static jynx.Message.M167;
-import static jynx.Message.M608;
-import static jynx.Message.M613;
-import static jynx.Message.M614;
-import static jynx.Message.M615;
-import static jynx.ReservedWord.res_locals;
-import static jynx.ReservedWord.res_stack;
+import static com.github.david32768.jynxfree.jynx.Directive.dir_limit;
+import static com.github.david32768.jynxfree.jynx.Global.JVM_VERSION;
+import static com.github.david32768.jynxfree.jynx.Global.LOG;
+import static com.github.david32768.jynxfree.jynx.ReservedWord.res_locals;
+import static com.github.david32768.jynxfree.jynx.ReservedWord.res_stack;
+import static com.github.david32768.jynxto.my.Message.M137;
+import static com.github.david32768.jynxto.my.Message.M167;
+import static com.github.david32768.jynxto.my.Message.M172;
+import static com.github.david32768.jynxto.my.Message.M193;
+import static com.github.david32768.jynxto.my.Message.M22;
+import static com.github.david32768.jynxto.my.Message.M608;
+import static com.github.david32768.jynxto.my.Message.M613;
+import static com.github.david32768.jynxto.my.Message.M614;
+import static com.github.david32768.jynxto.my.Message.M615;
 
-import jvm.Context;
-import jvm.Feature;
-import jvm.FrameType;
-import jynx.Directive;
-import jynx.Global;
-import jynx.GlobalOption;
-import jynx.LogIllegalArgumentException;
-import jynx.ReservedWord;
 
-import com.github.david32768.jynxto.stack.StackChecker;
-import com.github.david32768.jynxto.stack.StackMap;
-import com.github.david32768.jynxto.utility.InstructionVisitor;
-import java.util.HashSet;
-import java.util.Set;
+import com.github.david32768.jynxfree.classfile.InstructionVisitor;
+import com.github.david32768.jynxfree.classfile.StackChecker;
+import com.github.david32768.jynxfree.classfile.StackMap;
+import com.github.david32768.jynxfree.jvm.Context;
+import com.github.david32768.jynxfree.jvm.Feature;
+import com.github.david32768.jynxfree.jvm.FrameType;
+import com.github.david32768.jynxfree.jynx.Directive;
+import com.github.david32768.jynxfree.jynx.Global;
+import com.github.david32768.jynxfree.jynx.GlobalOption;
+import com.github.david32768.jynxfree.jynx.LogIllegalArgumentException;
+import com.github.david32768.jynxfree.jynx.ReservedWord;
 
 public class CodePrinter {
 
@@ -71,11 +72,7 @@ public class CodePrinter {
     private final List<VTypeAnnotation> varAnnotations;
     private final Map<Label,List<LocalVariable>> startvars;
     private final Map<Label,List<LocalVariable>> endvars;
-    private final Map<Label,List<ExceptionCatch>> startCatch;
-    private final Map<Label,List<ExceptionCatch>> endCatch;
-    private final Map<Label,List<ExceptionCatch>> handleCatch;
-    private final Set<ExceptionCatch> currentCatch;
-    
+    private final ExceptionCatcher catcher;
     private final StackChecker checker;
     private final StackMap stackMap;
     private final boolean printStack;
@@ -99,10 +96,7 @@ public class CodePrinter {
                                                         // or use stackmap.initialLocals() for changws
         this.startvars = new HashMap<>();
         this.endvars = new HashMap<>();
-        this.startCatch = new HashMap<>();
-        this.endCatch = new HashMap<>();
-        this.handleCatch = new HashMap<>();
-        this.currentCatch = new HashSet<>();
+        this.catcher = new ExceptionCatcher();
         this.stackMap = stackmap;
         this.checker = StackChecker.of(this.stackMap);
         this.nextlab = 0;
@@ -171,6 +165,9 @@ public class CodePrinter {
     }
 
     private void preProcessAttribute(Attribute<?> attribute) {
+        if (!UnknownAttributes.checkAttribute(ptr, attribute, Context.CODE)) {
+            return;
+        }
         switch(attribute) {
             case LineNumberTableAttribute _ -> {}
             case LocalVariableTableAttribute _  -> {}
@@ -187,7 +184,8 @@ public class CodePrinter {
             }
             case StackMapTableAttribute _ -> {}
             default -> {
-                UnknownAttributes.unknown(ptr.copy(), attribute, Context.CODE);
+                // "known attribute %s not catered for in context %s"
+                ptr.comment(M172, attribute, Context.CODE);
             }
         }
     }
@@ -262,15 +260,12 @@ public class CodePrinter {
             case ExceptionCatch handler -> {
                 processHandler(handler);
                 checker.element(handler);
-                startCatch.computeIfAbsent(handler.tryStart(), k -> new ArrayList<>()).add(handler);
-                startCatch.computeIfAbsent(handler.tryStart(), k -> new ArrayList<>()).add(handler);
-                endCatch.computeIfAbsent(handler.tryEnd(), k -> new ArrayList<>()).add(handler);
-                handleCatch.computeIfAbsent(handler.handler(), k -> new ArrayList<>()).add(handler);
+                catcher.add(handler);
             }
             case LabelTarget target -> {
                 processLabel(target);
             }
-            case CharacterRange _ -> {} // ? whats this
+            case CharacterRange _ -> {} // ? whats this - not in jvms 24
             case LineNumber inst -> {
                 int line = inst.line();
                 ptr.decrDepth().print(Directive.dir_line, line).nl().incrDepth();
@@ -310,27 +305,14 @@ public class CodePrinter {
             ptr.decrDepth().print(name, checker.stackAsDescriptor());
         }
         ptr.print(bciComment()).nl().incrDepth();
+        var handlers = catcher.update(label);
         if (printStack) {
-            var exlist = endCatch.getOrDefault(label, Collections.emptyList());
-            for (var ex : exlist) {
-                currentCatch.remove(ex);
-            }
-            exlist = startCatch.getOrDefault(label, Collections.emptyList());
-            for (var ex : exlist) {
-                currentCatch.add(ex);
-            }
-            var handlers = handleCatch.getOrDefault(label, Collections.emptyList());
-            boolean allfound = false;
             for (var handler : handlers) {
-                boolean isall = handler.catchType().isEmpty();
-                if (allfound && isall) {
-                    continue;
-                }
-                allfound = isall;
-                // "%s handler"
-                ptr.comment(M615, catchType(handler));
+                // "%s handler %s - %s"
+                ptr.comment(M615, catchType(handler),
+                        labelName(handler.tryStart()), labelName(handler.tryEnd()));
             }
-            for (var ex : currentCatch) {
+            for (var ex : catcher.currentCatch()) {
                 // "%s handled at %s"
                 ptr.comment(M614, catchType(ex), labelName(ex.handler()));
             }
@@ -407,7 +389,7 @@ public class CodePrinter {
                 Objects.requireNonNull(labelName);
                 ptr.print(res, frameType, labelName).nl();
             }
-            case StackMapFrameInfo.SimpleVerificationTypeInfo info -> {
+            case StackMapFrameInfo.SimpleVerificationTypeInfo _ -> {
                 assert !frameType.extra():
                         String.format("frame type = %s", frameType);
                 assert res == ReservedWord.res_locals || frameType != FrameType.ft_Top:

@@ -1,7 +1,7 @@
 package com.github.david32768.jynxto.tojynx;
 
-import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.classfile.attribute.StackMapTableAttribute;
 import java.lang.classfile.AttributeMapper;
 import java.lang.classfile.Attributes;
 import java.lang.classfile.ClassFile;
@@ -9,20 +9,18 @@ import java.lang.classfile.ClassModel;
 import java.lang.classfile.ClassTransform;
 import java.lang.classfile.CodeTransform;
 import java.lang.classfile.Opcode;
-import java.lang.classfile.attribute.StackMapTableAttribute;
+
 import java.util.Optional;
 
-import static jynx.Message.M600;
+import static com.github.david32768.jynxto.my.Message.M600;
 
-import jvm.JvmVersion;
-import jynx.ClassUtil;
-import jynx.Global;
-import jynx.GlobalOption;
+import com.github.david32768.jynxfree.jvm.JvmVersion;
+import com.github.david32768.jynxfree.jynx.Global;
+import com.github.david32768.jynxfree.jynx.GlobalOption;
 
 public class ToJynx {
 
-    public static boolean toJynx(PrintWriter pw, String file) throws IOException {
-        byte[] bytes = ClassUtil.getClassBytes(file);
+    public static boolean toJynx(byte[] bytes, PrintWriter pw) {
         ClassFile classfile = classFile();
         ClassModel cm = classfile.parse(bytes);
         if (Global.OPTION(GlobalOption.DEBUG)) {
@@ -49,8 +47,10 @@ public class ToJynx {
     private static ClassFile classFile() {
         ClassFile classfile;
         if (Global.OPTION(GlobalOption.SKIP_DEBUG)) {
-            classfile = ClassFile.of(ClassFile.DebugElementsOption.DROP_DEBUG,
-                    ClassFile.LineNumbersOption.DROP_LINE_NUMBERS);
+            classfile = ClassFile.of(
+                    ClassFile.DebugElementsOption.DROP_DEBUG,
+                    ClassFile.LineNumbersOption.DROP_LINE_NUMBERS
+            );
         } else {
             classfile = ClassFile.of();
         }
@@ -70,9 +70,11 @@ public class ToJynx {
     private static Optional<ClassModel> addStackMap(ClassFile classfile, ClassModel cm) {
         try {
             ClassTransform ct = ClassTransform.transformingMethodBodies(CodeTransform.ACCEPT_ALL);
-            byte[] bytes = classfile.withOptions(ClassFile.StackMapsOption.GENERATE_STACK_MAPS,
+            byte[] bytes = classfile.withOptions(
+                        ClassFile.AttributesProcessingOption.PASS_ALL_ATTRIBUTES,
+                        ClassFile.StackMapsOption.GENERATE_STACK_MAPS,
             // PATCH_DEAD_CODE is the default but as it alters the bytecode it is deliberately added
-                                    ClassFile.DeadCodeOption.PATCH_DEAD_CODE)
+                        ClassFile.DeadCodeOption.PATCH_DEAD_CODE)
                     .transformClass(cm, ct);
             return Optional.of(classfile.parse(bytes));
         } catch (IllegalArgumentException ex) {
@@ -104,6 +106,7 @@ public class ToJynx {
         Global.setJvmVersion(version);
         ClassPrinter cp = new ClassPrinter(ptr, version);
         cp.process(cm);
+        pw.flush();
     }
 
 }

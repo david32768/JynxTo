@@ -1,24 +1,25 @@
 package com.github.david32768.jynxto.tojynx;
 
 import java.lang.classfile.Attribute;
-import java.lang.classfile.ClassModel;
 import java.lang.classfile.attribute.ModuleAttribute;
 import java.lang.classfile.attribute.ModuleMainClassAttribute;
 import java.lang.classfile.attribute.ModulePackagesAttribute;
+import java.lang.classfile.ClassModel;
+
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
 
-import static jynx.Directive.*;
+import static com.github.david32768.jynxfree.jynx.Directive.*;
 
-import jvm.Context;
-import jvm.JvmVersion;
-import jvm.StandardAttribute;
-import jynx.Directive;
-import jynx.ReservedWord;
+import static com.github.david32768.jynxto.my.Message.M172;
 
+import com.github.david32768.jynxfree.jvm.Context;
+import com.github.david32768.jynxfree.jvm.JvmVersion;
+import com.github.david32768.jynxfree.jvm.StandardAttribute;
+import com.github.david32768.jynxfree.jynx.Directive;
+import com.github.david32768.jynxfree.jynx.ReservedWord;
 import com.github.david32768.jynxto.jynx.AccessName;
-
 
 public class ModulePrinter extends ClassHeaderPrinter {
     
@@ -36,10 +37,7 @@ public class ModulePrinter extends ClassHeaderPrinter {
             String name = attribute.attributeName().stringValue();
             var standard = StandardAttribute.getInstance(name);
             if (standard != null && standard.inContext(Context.CLASS) && standard.inContext(Context.MODULE)) {
-                boolean processed = processClassAttribute(attribute);
-                if(!processed) {
-                    UnknownAttributes.unknown(ptr.copy(), attribute, Context.MODULE);
-                }
+                processClassAttribute(attribute);
             } else {
                 moduleAttributes.put(name,attribute);
             }                
@@ -52,7 +50,7 @@ public class ModulePrinter extends ClassHeaderPrinter {
         var module = (ModuleAttribute)moduleAttributes.get("Module");
         Objects.nonNull(module);
         var version = module.moduleVersion();
-        var accessName = AccessName.of(module);
+        var accessName = AccessName.ofModule(module);
         ptr.print(dir_module, accessName, version).nl()
                 .incrDepth();
         for( var attribute : moduleAttributes.values()) {
@@ -62,19 +60,22 @@ public class ModulePrinter extends ClassHeaderPrinter {
     }
 
     void processAttribute(Attribute<?> attribute) {
+        if(!UnknownAttributes.checkAttribute(ptr, attribute, Context.MODULE)) {
+            return;
+        }
         switch(attribute) {
             case ModuleAttribute attr -> {
 
                 var requires = attr.requires();
                 for (var required: requires) {
-                    var accessName = AccessName.of(required);
+                    var accessName = AccessName.ofRequire(required);
                     ptr.print(Directive.dir_requires, accessName, required.requiresVersion()).nl();
                 }
 
                 var exports = attr.exports();
                 if (!exports.isEmpty()) {
                     for (var exported : exports) {
-                        var accessName = AccessName.of(exported);
+                        var accessName = AccessName.ofExport(exported);
                         ptr.print(Directive.dir_exports, accessName);
                         var to = exported.exportsTo();
                         if (!to.isEmpty()) {
@@ -91,7 +92,7 @@ public class ModulePrinter extends ClassHeaderPrinter {
                 var opens = attr.opens();
                 if (!opens.isEmpty()) {
                     for (var opened : opens) {
-                        var accessName = AccessName.of(opened);
+                        var accessName = AccessName.ofOpen(opened);
                         ptr.print(Directive.dir_opens, accessName);
                         var to = opened.opensTo();
                         if (!to.isEmpty()) {
@@ -142,7 +143,8 @@ public class ModulePrinter extends ClassHeaderPrinter {
                 ptr.decrDepth().print(end_array).nl();
             }
             default -> {
-                UnknownAttributes.unknown(ptr.copy(), attribute, Context.MODULE);
+                // "known attribute %s not catered for in context %s"
+                ptr.comment(M172, attribute, Context.MODULE);
             }            
         }
     }

@@ -1,5 +1,6 @@
 module com.github.david32768.JynxTo {
-    requires com.github.david32768x.jynx;
+    requires com.github.david32768.JynxFree;
     exports com.github.david32768.jynxto.tojynx;
-    provides jynx.MainOptionService with com.github.david32768.jynxto.tojynx.MainToJynx;
+    provides com.github.david32768.jynxfree.jynx.MainOptionService 
+            with com.github.david32768.jynxto.tojynx.MainToJynx;
 }

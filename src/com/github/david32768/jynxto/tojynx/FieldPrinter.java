@@ -1,20 +1,20 @@
 package com.github.david32768.jynxto.tojynx;
 
-import java.lang.classfile.Attributes;
-import java.lang.classfile.FieldModel;
-import java.lang.classfile.TypeAnnotation;
 import java.lang.classfile.attribute.ConstantValueAttribute;
 import java.lang.classfile.attribute.RuntimeInvisibleAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeInvisibleTypeAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleTypeAnnotationsAttribute;
 import java.lang.classfile.attribute.SignatureAttribute;
+import java.lang.classfile.Attributes;
+import java.lang.classfile.FieldModel;
+import java.lang.classfile.TypeAnnotation;
 
+import static com.github.david32768.jynxto.my.Message.M172;
 
-import jvm.Context;
-import jynx.Directive;
-import jynx.ReservedWord;
-
+import com.github.david32768.jynxfree.jvm.Context;
+import com.github.david32768.jynxfree.jynx.Directive;
+import com.github.david32768.jynxfree.jynx.ReservedWord;
 import com.github.david32768.jynxto.jynx.AccessName;
 
 public class FieldPrinter {
@@ -27,7 +27,7 @@ public class FieldPrinter {
 
 
     void process(FieldModel fm) {
-        var accessName = AccessName.of(fm);
+        var accessName = AccessName.ofField(fm);
         ptr.nl().print(Directive.dir_field, accessName, fm.fieldType());
         var cva = fm.findAttribute(Attributes.constantValue());
         if (cva.isPresent()) {
@@ -46,6 +46,9 @@ public class FieldPrinter {
 
         int ignoredCount = 0;
         for (var attribute: fm.attributes()) {
+            if (!UnknownAttributes.checkAttribute(ptr, attribute, Context.FIELD)) {
+                continue;
+            }
             switch(attribute) {
                 case SignatureAttribute attr -> {
                     ptr.print(Directive.dir_signature, attr.signature()).nl();
@@ -78,7 +81,8 @@ public class FieldPrinter {
                     ++ignoredCount;
                 }
                 default -> {
-                    UnknownAttributes.unknown(ptr.copy(), attribute, Context.FIELD);
+                    // "known attribute %s not catered for in context %s"
+                    ptr.comment(M172, attribute, Context.FIELD);
                 }
             }
         }

@@ -1,21 +1,25 @@
 package com.github.david32768.jynxto.tojynx;
 
+import java.lang.classfile.attribute.*;
+
 import java.lang.classfile.Attribute;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.constantpool.Utf8Entry;
-import java.lang.classfile.attribute.*;
 import java.lang.classfile.TypeAnnotation;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import static jynx.Global.OPTION;
-import static jynx.GlobalOption.VALHALLA;
-import static jynx.Directive.*;
+import static com.github.david32768.jynxfree.jynx.Directive.*;
 
-import jvm.Context;
-import jvm.JvmVersion;
-import jynx.ReservedWord;
+import static com.github.david32768.jynxfree.jynx.Global.OPTION;
+import static com.github.david32768.jynxfree.jynx.GlobalOption.VALHALLA;
+import static com.github.david32768.jynxto.my.Message.M172;
+
+import com.github.david32768.jynxfree.jvm.Context;
+import com.github.david32768.jynxfree.jvm.JvmVersion;
+import com.github.david32768.jynxfree.jynx.ReservedWord;
 
 import com.github.david32768.jynxto.jynx.DirectiveAccessName;
 
@@ -41,30 +45,33 @@ public class ClassHeaderPrinter {
         ptr.incrDepth();
         processHeader(cm);
         for (var attribute : cm.attributes()) {
-            boolean processed = processClassAttribute(attribute);
-            if(!processed && attribute instanceof UnknownAttribute uattr) {
-                if (OPTION(VALHALLA) && uattr.attributeName().stringValue().equals(LOADABLE)) {
-                    ptr.print(";", LOADABLE, ReservedWord.dot_array).nl()
-                            .incrDepth();
-                    var cp = cm.constantPool();
-                    var bb = ByteBuffer.wrap(uattr.contents());
-                    int ct = bb.getShort();
-                    while (bb.hasRemaining()) {
-                        int index = bb.getShort();
-                        Utf8Entry klass = cp.entryByIndex(index, Utf8Entry.class);
-                        ptr.print(";",klass).nl();
-                    }
-                    ptr.decrDepth()
-                            .print(";", end_array).nl();
-                } else { 
-                    UnknownAttributes.unknown(ptr.copy(), attribute, Context.CLASS);
+            if (OPTION(VALHALLA)
+                    && attribute instanceof UnknownAttribute uattr
+                    && uattr.attributeName().stringValue().equals(LOADABLE)) {
+                ptr.print(";", LOADABLE, ReservedWord.dot_array).nl()
+                        .incrDepth();
+                var cp = cm.constantPool();
+                var bb = ByteBuffer.wrap(uattr.contents());
+                int ct = bb.getShort();
+                while (bb.hasRemaining()) {
+                    int index = bb.getShort();
+                    Utf8Entry klass = cp.entryByIndex(index, Utf8Entry.class);
+                    ptr.print(";",klass).nl();
+                    --ct;
                 }
+                assert ct == 0;
+                ptr.decrDepth()
+                        .print(";", end_array).nl();
             }
+            processClassAttribute(attribute);            
         }
         ptr.decrDepth();
     }
     
-    protected boolean processClassAttribute(Attribute<?> attribute) {
+    protected void processClassAttribute(Attribute<?> attribute) {
+        if (!UnknownAttributes.checkAttribute(ptr, attribute, Context.CLASS)) {
+            return;
+        }
         switch(attribute) {
             case SourceFileAttribute attr -> {
                 ptr.print(dir_source, attr.sourceFile()).nl();
@@ -144,10 +151,10 @@ public class ClassHeaderPrinter {
             }
             case BootstrapMethodsAttribute _ -> {}
             default -> {
-                return false;
+                // "known attribute %s not catered for in context %s"
+                ptr.comment(M172, attribute, Context.CLASS);
             }
         }
-        return true;
     }
     
     private void processHeader(ClassModel cm) {

@@ -1,8 +1,6 @@
 package com.github.david32768.jynxto.tojynx;
 
 import java.lang.classfile.Attribute;
-import java.lang.classfile.MethodModel;
-import java.lang.classfile.TypeAnnotation;
 import java.lang.classfile.attribute.AnnotationDefaultAttribute;
 import java.lang.classfile.attribute.CodeAttribute;
 import java.lang.classfile.attribute.ExceptionsAttribute;
@@ -14,17 +12,23 @@ import java.lang.classfile.attribute.RuntimeVisibleAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleParameterAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleTypeAnnotationsAttribute;
 import java.lang.classfile.attribute.SignatureAttribute;
+import java.lang.classfile.MethodModel;
+import java.lang.classfile.TypeAnnotation;
+
 import java.lang.constant.ClassDesc;
 
-import static jynx.Global.OPTION;
-import static jynx.GlobalOption.SKIP_STACK;
+import static com.github.david32768.jynxfree.jynx.Global.OPTION;
+import static com.github.david32768.jynxfree.jynx.GlobalOption.SKIP_STACK;
+import static com.github.david32768.jynxto.my.Message.M172;
+import static com.github.david32768.jynxto.my.Message.M616;
 
-import jvm.Context;
-import jynx.Directive;
-import jynx.ReservedWord;
+import com.github.david32768.jynxfree.classfile.StackMap;
+import com.github.david32768.jynxfree.jvm.Context;
+import com.github.david32768.jynxfree.jynx.Directive;
+import com.github.david32768.jynxfree.jynx.ReservedWord;
 
 import com.github.david32768.jynxto.jynx.AccessName;
-import com.github.david32768.jynxto.stack.StackMap;
+
 
 public class MethodPrinter {
     
@@ -40,7 +44,7 @@ public class MethodPrinter {
     }
 
     void process(MethodModel mm) {
-        var accessName = AccessName.of(mm);        
+        var accessName = AccessName.ofMethod(mm);        
         ptr.nl()
                 .print(Directive.dir_method, accessName)
                 .setLogContext()
@@ -59,15 +63,22 @@ public class MethodPrinter {
     }
 
     private void processAttribute(Attribute<?> attribute) {
+        if (!UnknownAttributes.checkAttribute(ptr, attribute, Context.METHOD)) {
+            return;
+        }
         switch(attribute) {
             case ExceptionsAttribute attr -> {
-                ptr.print(Directive.dir_throws, ReservedWord.dot_array)
-                        .nl().incrDepth();
-                for (var except : attr.exceptions()) {
-                    ptr.print(except.asInternalName()).nl();
+                if (attr.exceptions().isEmpty()) {
+                    // "%s attribute is present but empty"
+                    ptr.comment(M616, attr.attributeName());
+                } else {
+                    ptr.print(Directive.dir_throws, ReservedWord.dot_array)
+                            .nl().incrDepth();
+                    for (var except : attr.exceptions()) {
+                        ptr.print(except.asInternalName()).nl();
+                    }
+                    ptr.decrDepth().print(Directive.end_array).nl();
                 }
-                ptr.decrDepth().print(Directive.end_array).nl();
-
             }
             case SignatureAttribute attr -> {
                 ptr.print(Directive.dir_signature, attr.signature()).nl();
@@ -111,7 +122,7 @@ public class MethodPrinter {
             case MethodParametersAttribute attr -> {
                 int index = 0;
                 for (var parm : attr.parameters()) {
-                    var accessName = AccessName.of(parm);
+                    var accessName = AccessName.ofParameter(parm);
                     ptr.print(Directive.dir_parameter, index, accessName).nl();
                     ++index;
                 }
@@ -120,7 +131,8 @@ public class MethodPrinter {
                 this.codeAttribute = ca;
             }
             default -> {
-                UnknownAttributes.unknown(ptr.copy(), attribute, Context.METHOD);
+                // "known attribute %s not catered for in context %s"
+                ptr.comment(M172, attribute, Context.METHOD);
             }
         }
     }

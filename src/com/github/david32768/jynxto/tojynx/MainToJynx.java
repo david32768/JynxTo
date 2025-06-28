@@ -1,30 +1,40 @@
 package com.github.david32768.jynxto.tojynx;
 
+import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.StringWriter;
 
-import static jynx.Global.LOG;
-import jynx.MainOption;
-import jynx.MainOptionService;
-import static jynx.Message.M237;
-
-import com.github.david32768.jynxto.tojynx.ToJynx;
+import com.github.david32768.jynxfree.jynx.ClassUtil;
+import com.github.david32768.jynxfree.jynx.MainOption;
+import com.github.david32768.jynxfree.jynx.MainOptionService;
 
 public class MainToJynx implements MainOptionService {
 
     @Override
     public MainOption main() {
-        return MainOption.TOJYNX;
+        return MainOption.DISASSEMBLY;
     }
 
     @Override
     public boolean call(String fname, PrintWriter pw) {
+        byte[] bytes;
         try {
-            return ToJynx.toJynx(pw, fname);
-        } catch (Exception ex) {
-             LOG(ex);
-             LOG(M237,fname); // "error accepting class file: %s"
-             return false;
-         }        
+            bytes = ClassUtil.getClassBytes(fname);
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            return false;
+        }
+        return ToJynx.toJynx(bytes, pw);
+    }
+    
+
+    @Override
+    public String callToString(byte[] bytes) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        boolean success = ToJynx.toJynx(bytes, pw);
+        pw.flush();
+        return success? sw.toString(): null;
     }
 
 }

@@ -1,8 +1,6 @@
 package com.github.david32768.jynxto.tojynx;
 
 import java.lang.classfile.Instruction;
-import java.lang.classfile.Label;
-import java.lang.classfile.Opcode;
 import java.lang.classfile.instruction.BranchInstruction;
 import java.lang.classfile.instruction.ConstantInstruction;
 import java.lang.classfile.instruction.DiscontinuedInstruction;
@@ -20,6 +18,9 @@ import java.lang.classfile.instruction.StoreInstruction;
 import java.lang.classfile.instruction.SwitchCase;
 import java.lang.classfile.instruction.TableSwitchInstruction;
 import java.lang.classfile.instruction.TypeCheckInstruction;
+import java.lang.classfile.Label;
+import java.lang.classfile.Opcode;
+
 import java.lang.constant.ConstantDesc;
 import java.lang.constant.DynamicCallSiteDesc;
 import java.util.Collection;
@@ -28,19 +29,18 @@ import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import static jynx.Message.M603;
-import static jynx.Message.M604;
-import static jynx.Message.M605;
-import static jynx.Message.M606;
-import static jynx.Message.M607;
-import static jynx.Message.M610;
-import static jynx.Message.M611;
+import static com.github.david32768.jynxto.my.Message.M603;
+import static com.github.david32768.jynxto.my.Message.M604;
+import static com.github.david32768.jynxto.my.Message.M605;
+import static com.github.david32768.jynxto.my.Message.M606;
+import static com.github.david32768.jynxto.my.Message.M607;
+import static com.github.david32768.jynxto.my.Message.M610;
+import static com.github.david32768.jynxto.my.Message.M611;
 
-import jvm.NumType;
-import jynx.Directive;
-import jynx.ReservedWord;
-
-import com.github.david32768.jynxto.utility.AbstractOpcodeVisitor;
+import com.github.david32768.jynxfree.classfile.AbstractOpcodeVisitor;
+import com.github.david32768.jynxfree.jvm.NumType;
+import com.github.david32768.jynxfree.jynx.Directive;
+import com.github.david32768.jynxfree.jynx.ReservedWord;
 
 public class InstructionPrinter extends AbstractOpcodeVisitor {
 
@@ -165,12 +165,10 @@ public class InstructionPrinter extends AbstractOpcodeVisitor {
         var map = sortCases(op, inst.cases()); // find duplicate case values
 
         var deftarget = inst.defaultTarget();
-        boolean removed = map.values()
-                .removeIf(c -> c.target() == deftarget);
-        if (removed) {
-            // "case(s) with branch to default label in %s dropped"
-            ptr.comment(M611, op);
-        }
+        map.values().stream()
+                .filter(c -> c.target() == deftarget)
+                // "case %d with branch to default label in %s could be dropped"
+                .forEach(c -> ptr.comment(M611, c.caseValue(), op));
         long sz = map.size();
         if (sz > MAX_LOOKUP_ENTRIES) {
             // "number of entries in %s (%d) exceeds maximum possible %d"

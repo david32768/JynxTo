@@ -1,7 +1,6 @@
 package com.github.david32768.jynxto.tojynx;
 
 import java.lang.classfile.AnnotationValue;
-import java.lang.classfile.Opcode;
 import java.lang.classfile.constantpool.AnnotationConstantValueEntry;
 import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.classfile.constantpool.DynamicConstantPoolEntry;
@@ -14,6 +13,8 @@ import java.lang.classfile.constantpool.NameAndTypeEntry;
 import java.lang.classfile.constantpool.PackageEntry;
 import java.lang.classfile.constantpool.PoolEntry;
 import java.lang.classfile.constantpool.Utf8Entry;
+import java.lang.classfile.Opcode;
+
 import java.lang.constant.ClassDesc;
 import java.lang.constant.ConstantDesc;
 import java.lang.constant.DirectMethodHandleDesc;
@@ -22,30 +23,30 @@ import java.lang.constant.DynamicConstantDesc;
 import java.lang.constant.MethodHandleDesc;
 import java.lang.constant.MethodTypeDesc;
 import java.lang.invoke.TypeDescriptor;
+import java.util.function.Consumer;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Consumer;
 
-import static jynx.Global.LOG;
-import static jynx.Global.LOGGER;
-import static jynx.Message.M612;
-import static jynx.Message.M911;
-import static jynx.ReservedWordType.LABEL;
-import static jynx.ReservedWordType.NAME;
-import static jynx.ReservedWordType.QUOTED;
+import static com.github.david32768.jynxfree.jynx.Global.LOG;
+import static com.github.david32768.jynxfree.jynx.Global.LOGGER;
+import static com.github.david32768.jynxfree.jynx.ReservedWordType.LABEL;
+import static com.github.david32768.jynxfree.jynx.ReservedWordType.NAME;
+import static com.github.david32768.jynxfree.jynx.ReservedWordType.QUOTED;
+import static com.github.david32768.jynxto.my.Message.M612;
+import static com.github.david32768.jynxto.my.Message.M911;
 
-import jvm.AccessFlag;
-import jvm.HandleType;
-import jynx.LogAssertionError;
-import jynx.Message;
-import jynx.ReservedWord;
-import jynx.ReservedWordType;
-import jynx.StringUtil;
+import com.github.david32768.jynxfree.jvm.AccessFlag;
+import com.github.david32768.jynxfree.jvm.HandleType;
+import com.github.david32768.jynxfree.jynx.JynxMessage;
+import com.github.david32768.jynxfree.jynx.LogAssertionError;
+import com.github.david32768.jynxfree.jynx.LogMsgType;
+import com.github.david32768.jynxfree.jynx.ReservedWord;
+import com.github.david32768.jynxfree.jynx.ReservedWordType;
+import com.github.david32768.jynxfree.jynx.StringUtil;
 
 import com.github.david32768.jynxto.jynx.AccessName;
 import com.github.david32768.jynxto.jynx.DirectiveAccessName;
-import jynx.LogMsgType;
 
 public class JynxPrinter {
     
@@ -162,11 +163,11 @@ public class JynxPrinter {
                 printString(op.name().toLowerCase());
             }
             case AccessName an -> {
-                printAccessName(an.flags(), an.name());
+                printAccessName(an.flags(), an.optionalName());
             }
             case DirectiveAccessName dan -> {
                 printString(dan.dir().toString());
-                printAccessName(dan.flags(), dan.name());
+                printAccessName(dan.flags(), dan.optionalName());
             }
             default -> {
                 printString(object);
@@ -200,7 +201,7 @@ public class JynxPrinter {
         return this;
     }
     
-    public JynxPrinter comment(Message msg, Object... objs) {
+    public JynxPrinter comment(JynxMessage msg, Object... objs) {
         assert sb.isEmpty();
         sep();
         sb.append(';');
@@ -215,7 +216,7 @@ public class JynxPrinter {
         return this;
     }
         
-    private void printAccessName(Set<AccessFlag> flags, Optional<CharSequence> name) {
+    private void printAccessName(Set<AccessFlag> flags, Optional<? extends CharSequence> name) {
         printFlags(flags);
         name.ifPresent(this::printName);
     }

@@ -13,12 +13,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-import static jynx.Global.OPTION;
-import static jynx.GlobalOption.SKIP_ANNOTATIONS;
+import static com.github.david32768.jynxfree.jynx.Global.OPTION;
+import static com.github.david32768.jynxfree.jynx.GlobalOption.SKIP_ANNOTATIONS;
 
-import jvm.TypeRef;
-import jynx.Directive;
-import jynx.ReservedWord;
+import com.github.david32768.jynxfree.jvm.TypeRef;
+import com.github.david32768.jynxfree.jynx.Directive;
+import com.github.david32768.jynxfree.jynx.ReservedWord;
 
 
 public class AnnotationPrinter {

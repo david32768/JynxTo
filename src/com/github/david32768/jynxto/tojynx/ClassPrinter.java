@@ -2,12 +2,12 @@ package com.github.david32768.jynxto.tojynx;
 
 import java.lang.classfile.ClassModel;
 
-import static jynx.Global.OPTIONS;
+import static com.github.david32768.jynxfree.jynx.Global.OPTIONS;
 
-import jvm.JvmVersion;
-import jynx.Directive;
-import jynx.GlobalOption;
-import jynx.MainOption;
+import com.github.david32768.jynxfree.jvm.JvmVersion;
+import com.github.david32768.jynxfree.jynx.Directive;
+import com.github.david32768.jynxfree.jynx.GlobalOption;
+import com.github.david32768.jynxfree.jynx.MainOption;
 
 import com.github.david32768.jynxto.jynx.DirectiveAccessName;
 
