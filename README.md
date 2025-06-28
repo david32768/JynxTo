@@ -1,4 +1,7 @@
+# Jynx
+[Jynx(bird)](https://en.wikipedia.org/wiki/Wryneck)
 
+## JynxTo
 
 Requires Java V24
 
