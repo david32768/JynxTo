@@ -4,7 +4,7 @@ Requires Java V24
 
 Uses java.lang.classfile to produce Jynx file from Java class file.
 
-Accessed via module com.github.david32768x.JynxFree.
+Accessed via module com.github.david32768.JynxFree.
 
 Usage:
 
