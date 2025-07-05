@@ -1,5 +1,7 @@
 package com.github.david32768.jynxto.tojynx;
 
+
+import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.classfile.instruction.ExceptionCatch;
 import java.lang.classfile.Label;
 
@@ -46,8 +48,17 @@ public class ExceptionCatcher {
     }
 
     public List<ExceptionCatch> currentCatch() {
-        Collections.sort(currentCatch, Comparators::compare);
+        Collections.sort(currentCatch, ExceptionCatcher::compare);
         return List.copyOf(currentCatch);
     }    
+    
+    public static int compare(ExceptionCatch o1, ExceptionCatch o2) {
+        var opt1 = o1.catchType().map(ClassEntry::asInternalName);
+        var opt2 = o2.catchType().map(ClassEntry::asInternalName);
+        int result = Comparators.compareEmptyLast(opt1,opt2); // empty = all exceptions
+        return result == 0?
+                Comparators.compareHash(o1, o2):
+                result;
+    }
     
 }

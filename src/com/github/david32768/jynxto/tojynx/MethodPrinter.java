@@ -19,7 +19,6 @@ import java.lang.constant.ClassDesc;
 
 import static com.github.david32768.jynxfree.jynx.Global.OPTION;
 import static com.github.david32768.jynxfree.jynx.GlobalOption.SKIP_STACK;
-import static com.github.david32768.jynxto.my.Message.M172;
 import static com.github.david32768.jynxto.my.Message.M616;
 
 import com.github.david32768.jynxfree.classfile.StackMap;
@@ -63,9 +62,6 @@ public class MethodPrinter {
     }
 
     private void processAttribute(Attribute<?> attribute) {
-        if (!UnknownAttributes.checkAttribute(ptr, attribute, Context.METHOD)) {
-            return;
-        }
         switch(attribute) {
             case ExceptionsAttribute attr -> {
                 if (attr.exceptions().isEmpty()) {
@@ -131,8 +127,7 @@ public class MethodPrinter {
                 this.codeAttribute = ca;
             }
             default -> {
-                // "known attribute %s not catered for in context %s"
-                ptr.comment(M172, attribute, Context.METHOD);
+                UnknownAttributes.process(ptr, attribute, Context.METHOD);
             }
         }
     }

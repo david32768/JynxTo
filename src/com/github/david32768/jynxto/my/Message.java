@@ -13,6 +13,7 @@ public enum Message implements JynxMessage {
     M172(ERROR,"known attribute %s not catered for in context %s"),
     M173(WARNING,"unknown attribute %s in context %s ignored"),
     M174(INFO,"%s is omitted as pseudo_access flag %s is used"),
+    M192("unknown code element %s ignored"),
     M193(LINE,"value required (%d) for %s is less than limit value (%d); %d used"),
     M311(WARNING,"attribute %s not valid for version %s"),
     M600(INFO,"%s not actioned as a method contains %s"),

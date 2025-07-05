@@ -12,8 +12,6 @@ import java.util.TreeMap;
 
 import static com.github.david32768.jynxfree.jynx.Directive.*;
 
-import static com.github.david32768.jynxto.my.Message.M172;
-
 import com.github.david32768.jynxfree.jvm.Context;
 import com.github.david32768.jynxfree.jvm.JvmVersion;
 import com.github.david32768.jynxfree.jvm.StandardAttribute;
@@ -60,9 +58,6 @@ public class ModulePrinter extends ClassHeaderPrinter {
     }
 
     void processAttribute(Attribute<?> attribute) {
-        if(!UnknownAttributes.checkAttribute(ptr, attribute, Context.MODULE)) {
-            return;
-        }
         switch(attribute) {
             case ModuleAttribute attr -> {
 
@@ -143,8 +138,7 @@ public class ModulePrinter extends ClassHeaderPrinter {
                 ptr.decrDepth().print(end_array).nl();
             }
             default -> {
-                // "known attribute %s not catered for in context %s"
-                ptr.comment(M172, attribute, Context.MODULE);
+                UnknownAttributes.process(ptr, attribute, Context.MODULE);
             }            
         }
     }

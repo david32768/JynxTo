@@ -14,7 +14,6 @@ import java.lang.classfile.attribute.StackMapFrameInfo.VerificationTypeInfo;
 import java.lang.classfile.attribute.StackMapTableAttribute;
 import java.lang.classfile.CodeElement;
 import java.lang.classfile.CodeModel;
-import java.lang.classfile.CustomAttribute;
 import java.lang.classfile.Instruction;
 import java.lang.classfile.Label;
 import java.lang.classfile.PseudoInstruction;
@@ -35,7 +34,7 @@ import static com.github.david32768.jynxfree.jynx.ReservedWord.res_locals;
 import static com.github.david32768.jynxfree.jynx.ReservedWord.res_stack;
 import static com.github.david32768.jynxto.my.Message.M137;
 import static com.github.david32768.jynxto.my.Message.M167;
-import static com.github.david32768.jynxto.my.Message.M172;
+import static com.github.david32768.jynxto.my.Message.M192;
 import static com.github.david32768.jynxto.my.Message.M193;
 import static com.github.david32768.jynxto.my.Message.M22;
 import static com.github.david32768.jynxto.my.Message.M608;
@@ -165,9 +164,6 @@ public class CodePrinter {
     }
 
     private void preProcessAttribute(Attribute<?> attribute) {
-        if (!UnknownAttributes.checkAttribute(ptr, attribute, Context.CODE)) {
-            return;
-        }
         switch(attribute) {
             case LineNumberTableAttribute _ -> {}
             case LocalVariableTableAttribute _  -> {}
@@ -184,13 +180,15 @@ public class CodePrinter {
             }
             case StackMapTableAttribute _ -> {}
             default -> {
-                // "known attribute %s not catered for in context %s"
-                ptr.comment(M172, attribute, Context.CODE);
+                UnknownAttributes.process(ptr, attribute, Context.CODE);
             }
         }
     }
 
     private void processElement(CodeElement element) {
+        if (element instanceof Attribute) {
+            return; // already processed in preProcessAttribute
+        }
         switch (element) {
             case Instruction inst -> {
                 processInstruction(inst);
@@ -206,10 +204,10 @@ public class CodePrinter {
             case PseudoInstruction pseudo -> {
                 processPseudo(pseudo);
             }
-            case StackMapTableAttribute _ -> {}
-            case RuntimeVisibleTypeAnnotationsAttribute _ -> {}
-            case RuntimeInvisibleTypeAnnotationsAttribute _ -> {}
-            case CustomAttribute _ -> {}
+            default -> {
+                // "unknown code element %s ignored"
+                ptr.comment(M192, element);
+            }
         }
     }
 

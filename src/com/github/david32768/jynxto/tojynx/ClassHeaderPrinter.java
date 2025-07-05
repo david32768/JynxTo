@@ -15,7 +15,6 @@ import static com.github.david32768.jynxfree.jynx.Directive.*;
 
 import static com.github.david32768.jynxfree.jynx.Global.OPTION;
 import static com.github.david32768.jynxfree.jynx.GlobalOption.VALHALLA;
-import static com.github.david32768.jynxto.my.Message.M172;
 
 import com.github.david32768.jynxfree.jvm.Context;
 import com.github.david32768.jynxfree.jvm.JvmVersion;
@@ -69,9 +68,6 @@ public class ClassHeaderPrinter {
     }
     
     protected void processClassAttribute(Attribute<?> attribute) {
-        if (!UnknownAttributes.checkAttribute(ptr, attribute, Context.CLASS)) {
-            return;
-        }
         switch(attribute) {
             case SourceFileAttribute attr -> {
                 ptr.print(dir_source, attr.sourceFile()).nl();
@@ -151,8 +147,7 @@ public class ClassHeaderPrinter {
             }
             case BootstrapMethodsAttribute _ -> {}
             default -> {
-                // "known attribute %s not catered for in context %s"
-                ptr.comment(M172, attribute, Context.CLASS);
+                UnknownAttributes.process(ptr, attribute, Context.CLASS);
             }
         }
     }
