@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
+import static com.github.david32768.jynxfree.jynx.Global.LOG;
+
 import com.github.david32768.jynxfree.jynx.ClassUtil;
 import com.github.david32768.jynxfree.jynx.MainOption;
 import com.github.david32768.jynxfree.jynx.MainOptionService;
@@ -16,12 +18,12 @@ public class MainToJynx implements MainOptionService {
     }
 
     @Override
-    public boolean call(String fname, PrintWriter pw) {
+    public boolean call(PrintWriter pw, String fname) {
         byte[] bytes;
         try {
             bytes = ClassUtil.getClassBytes(fname);
         } catch (IOException ex) {
-            ex.printStackTrace();
+            LOG(ex);
             return false;
         }
         return ToJynx.toJynx(bytes, pw);

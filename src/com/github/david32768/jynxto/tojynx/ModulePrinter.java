@@ -46,7 +46,7 @@ public class ModulePrinter extends ClassHeaderPrinter {
     
     private void processModuleInfo() {
         var module = (ModuleAttribute)moduleAttributes.get("Module");
-        Objects.nonNull(module);
+        assert Objects.nonNull(module);
         var version = module.moduleVersion();
         var accessName = AccessName.ofModule(module);
         ptr.print(dir_module, accessName, version).nl()

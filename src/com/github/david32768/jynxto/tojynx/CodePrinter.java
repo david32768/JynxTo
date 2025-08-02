@@ -409,7 +409,7 @@ public class CodePrinter {
                 default -> null;
             };
             if (lv != null) {
-                // "slot %d name = %s type = %s"
+                // "slot %d name = %s, type = %s"
                 ptr.comment(M613, lv.slot(), lv.name(), lv.type().stringValue());
             }
         }

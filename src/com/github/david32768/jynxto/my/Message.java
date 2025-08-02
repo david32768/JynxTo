@@ -13,9 +13,8 @@ public enum Message implements JynxMessage {
     M172(ERROR,"known attribute %s not catered for in context %s"),
     M173(WARNING,"unknown attribute %s in context %s ignored"),
     M174(INFO,"%s is omitted as pseudo_access flag %s is used"),
-    M192("unknown code element %s ignored"),
+    M192(ERROR,"unknown code element %s ignored"),
     M193(LINE,"value required (%d) for %s is less than limit value (%d); %d used"),
-    M311(WARNING,"attribute %s not valid for version %s"),
     M600(INFO,"%s not actioned as a method contains %s"),
     M603(INFO,"duplicate case %d in %s dropped"),
     M604(ERROR,"lowest case value (%d) is lower than low (%d)"),
@@ -26,10 +25,12 @@ public enum Message implements JynxMessage {
     M610(ERROR,"ambiguous case %d in %s dropped"),
     M611(INFO,"case %d with branch to default label in %s could be dropped"),
     M612(BLANK,"%s ; line %d"),
-    M613(BLANK,"slot %d name = %s type = %s"),
+    M613(BLANK,"slot %d name = %s, type = %s"),
     M614(BLANK,"%s handled at %s"),
     M615(BLANK,"%s handler %s - %s"),
     M616(BLANK,"%s attribute is present but empty"),
+    M621(INFO,"%s not actioned as exception occured: %s"),
+
     M911(ERROR,"indent depth would be below lower limit %d"),
     ;
 
