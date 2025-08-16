@@ -15,7 +15,6 @@ public enum Message implements JynxMessage {
     M174(INFO,"%s is omitted as pseudo_access flag %s is used"),
     M192(ERROR,"unknown code element %s ignored"),
     M193(LINE,"value required (%d) for %s is less than limit value (%d); %d used"),
-    M600(INFO,"%s not actioned as a method contains %s"),
     M603(INFO,"duplicate case %d in %s dropped"),
     M604(ERROR,"lowest case value (%d) is lower than low (%d)"),
     M605(ERROR,"highest case value (%d) is higher than high (%d)"),

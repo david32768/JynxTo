@@ -186,10 +186,8 @@ public class CodePrinter {
     }
 
     private void processElement(CodeElement element) {
-        if (element instanceof Attribute) {
-            return; // already processed in preProcessAttribute
-        }
         switch (element) {
+            case Attribute _ -> {} // already processed in preProcessAttribute
             case Instruction inst -> {
                 processInstruction(inst);
                 checker.instruction(inst);
@@ -302,7 +300,10 @@ public class CodePrinter {
         } else {
             ptr.decrDepth().print(name, checker.stackAsDescriptor());
         }
-        ptr.print(bciComment()).nl().incrDepth();
+        if (printStack) {
+            ptr.print(bciComment());        
+        }
+        ptr.nl().incrDepth();
         var handlers = catcher.update(label);
         if (printStack) {
             for (var handler : handlers) {
@@ -325,24 +326,37 @@ public class CodePrinter {
             ptr.print(Directive.dir_stack);
 
             boolean prefix = isPrefixOf(previousLocals, locals);
+            int start = 0;
+            int slot = 0;
             if (prefix) {
                 ptr.print(ReservedWord.res_use, res_locals);
-            }
-     
+                start = previousLocals.size();
+                for (var info : previousLocals) {
+                    slot += slotSize(info);
+                }                
+            }     
             ptr.nl().incrDepth();
 
-            int start = prefix? previousLocals.size(): 0;
             for (var info : locals.subList(start, locals.size())) {
-                processStackMap(ReservedWord.res_locals, info);
+                processStackMapInfo(ReservedWord.res_locals, info, slot);
+                slot += slotSize(info);
             }
             previousLocals = locals;
             for (var info : stackMap.stackFrameFor(label)) {
-                processStackMap(ReservedWord.res_stack, info);
+                processStackMapInfo(ReservedWord.res_stack, info, -1);
             }
             ptr.decrDepth().print(Directive.end_stack).nl();
         }
     }
 
+    private int slotSize(VerificationTypeInfo info) {
+        return switch (info) {
+            case StackMapFrameInfo.SimpleVerificationTypeInfo.DOUBLE -> 2;
+            case StackMapFrameInfo.SimpleVerificationTypeInfo.LONG  -> 2;
+            default -> 1;
+        };        
+    }
+    
     private <T> boolean isPrefixOf(List<T> list1, List<T> list2) {
         int sz1 = list1.size();
         int sz2 = list2.size();
@@ -372,28 +386,33 @@ public class CodePrinter {
         
     }
     
-    private void processStackMap(ReservedWord res, StackMapFrameInfo.VerificationTypeInfo typeInfo) {
+    private void processStackMapInfo(ReservedWord res, StackMapFrameInfo.VerificationTypeInfo typeInfo, int slot) {
         int tag = typeInfo.tag();
         var frameType = FrameType.fromJVMType(tag);
         switch(typeInfo) {
             case StackMapFrameInfo.ObjectVerificationTypeInfo info -> {
                 assert FrameType.ft_Object == frameType;
-                ptr.print(res, frameType, info.className()).nl();
+                ptr.print(res, frameType, info.className());
             }
             case StackMapFrameInfo.UninitializedVerificationTypeInfo info -> {
                 assert FrameType.ft_Uninitialized == frameType;
                 var label = info.newTarget();
                 var labelName = labelNames.get(label);
                 Objects.requireNonNull(labelName);
-                ptr.print(res, frameType, labelName).nl();
+                ptr.print(res, frameType, labelName);
             }
             case StackMapFrameInfo.SimpleVerificationTypeInfo _ -> {
                 assert !frameType.extra():
                         String.format("frame type = %s", frameType);
                 assert res == ReservedWord.res_locals || frameType != FrameType.ft_Top:
                         String.format("frame type = %s res = %s", frameType, res);
-                ptr.print(res, frameType).nl();
+                ptr.print(res, frameType);
             }
+        }
+        if (res == ReservedWord.res_locals) {
+            ptr.print("; slot", slot).nl();
+        } else {
+            ptr.nl();
         }
     }
     

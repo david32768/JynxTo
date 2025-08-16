@@ -4,15 +4,14 @@ import java.io.PrintWriter;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 
-import static com.github.david32768.jynxto.my.Message.M600;
+import static com.github.david32768.jynxfree.jynx.Global.OPTION;
 import static com.github.david32768.jynxto.my.Message.M621;
 
-import com.github.david32768.jynxfree.classfile.ClassModels;
-import com.github.david32768.jynxfree.classfile.Transforms;
 import com.github.david32768.jynxfree.jvm.JvmVersion;
 import com.github.david32768.jynxfree.jynx.Global;
 import com.github.david32768.jynxfree.jynx.GlobalOption;
-
+import com.github.david32768.jynxfree.transform.ClassModels;
+import com.github.david32768.jynxfree.transform.Transforms;
 
 public class ToJynx {
 
@@ -25,19 +24,15 @@ public class ToJynx {
         }
         boolean hasStackMap = ClassModels.hasStackMap(cm);        
         if (!hasStackMap && !Global.OPTION(GlobalOption.SKIP_FRAMES)) {
-        var jsropcode = ClassModels.findDiscontinuedOpcode(cm);
-            if (jsropcode.isPresent()) {
-                // "%s not actioned as a method contains %s"
-                Global.LOG(M600, ClassFile.StackMapsOption.GENERATE_STACK_MAPS, jsropcode.get());
-            } else {
-                try {
-                    byte[] smbytes = Transforms.addStackMap(classfile, cm);
-                    cm =  classfile.parse(smbytes);
-                    hasStackMap = true;
-                } catch (IllegalArgumentException ex) {
-                    // "%s not actioned as exception occured: %s"
-                    Global.LOG(M621, ClassFile.StackMapsOption.GENERATE_STACK_MAPS, ex.getMessage());
-                }
+            try {
+                byte[] smbytes = OPTION(GlobalOption.UPGRADE_TO_V6)?
+                        Transforms.upgradeToAtLeastV6(classfile, cm):
+                        Transforms.addStackMap(classfile, cm);
+                cm =  classfile.parse(smbytes);
+                hasStackMap = true;
+            } catch (UnsupportedOperationException | IllegalArgumentException ex) { 
+                // "%s not actioned as exception occured: %s"
+                Global.LOG(M621, ClassFile.StackMapsOption.GENERATE_STACK_MAPS, ex.getMessage());
             }
         }
 
