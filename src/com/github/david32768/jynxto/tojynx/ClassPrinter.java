@@ -53,7 +53,7 @@ public class ClassPrinter {
             fp.process(fm);
         }
         for (var mm : cm.methods()) {
-            var mp = new MethodPrinter(ptr, cm.thisClass().asSymbol());
+            var mp = new MethodPrinter(ptr);
             mp.process(mm);
         }        
     }

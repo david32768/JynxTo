@@ -25,17 +25,6 @@ import java.lang.constant.ConstantDesc;
 import java.lang.constant.DynamicCallSiteDesc;
 import java.util.Collection;
 import java.util.function.Function;
-import java.util.List;
-import java.util.SortedMap;
-import java.util.TreeMap;
-
-import static com.github.david32768.jynxto.my.Message.M603;
-import static com.github.david32768.jynxto.my.Message.M604;
-import static com.github.david32768.jynxto.my.Message.M605;
-import static com.github.david32768.jynxto.my.Message.M606;
-import static com.github.david32768.jynxto.my.Message.M607;
-import static com.github.david32768.jynxto.my.Message.M610;
-import static com.github.david32768.jynxto.my.Message.M611;
 
 import com.github.david32768.jynxfree.classfile.AbstractOpcodeVisitor;
 import com.github.david32768.jynxfree.jvm.NumType;
@@ -153,30 +142,10 @@ public class InstructionPrinter extends AbstractOpcodeVisitor {
         }
     }
 
-    private static final int MAX_CODESIZE = 2*Short.MAX_VALUE + 1;
-        
-    private final int SWITCH_OVERHEAD = 1 + 2 + 1 + 4 + 1;
-    // iload_ + padding + op + default + (cases) + return
-    
-    private final int MAX_LOOKUP_ENTRIES = (MAX_CODESIZE - (SWITCH_OVERHEAD + 4))/8; // = 8190
-    
     @Override
     public void lookupSwitch(Opcode op, LookupSwitchInstruction inst) {
-        var map = sortCases(op, inst.cases()); // find duplicate case values
-
-        var deftarget = inst.defaultTarget();
-        map.values().stream()
-                .filter(c -> c.target() == deftarget)
-                // "case %d with branch to default label in %s could be dropped"
-                .forEach(c -> ptr.comment(M611, c.caseValue(), op));
-        long sz = map.size();
-        if (sz > MAX_LOOKUP_ENTRIES) {
-            // "number of entries in %s (%d) exceeds maximum possible %d"
-            String msg = M607.format(op, sz, MAX_LOOKUP_ENTRIES);
-            throw new IllegalArgumentException(msg);
-        }
-
-        switch_(op, deftarget, map.values());
+        ptr.print(op);
+        switch_(inst.defaultTarget(), inst.cases());
     }
 
     @Override
@@ -204,44 +173,10 @@ public class InstructionPrinter extends AbstractOpcodeVisitor {
         ptr.print(op, type).nl();
     }
 
-    private final int MAX_TABLE_ENTRIES = (MAX_CODESIZE - (SWITCH_OVERHEAD + 4 + 4))/4; // = 16379
-    
     @Override
     public void tableSwitch(Opcode op, TableSwitchInstruction inst) {
-        var deflab = inst.defaultTarget();
-        var cases = inst.cases();
-        int low = inst.lowValue();
-        int high = inst.highValue();
-
-        var map = sortCases(op, cases);
-        map.putIfAbsent(low, SwitchCase.of(low, deflab));
-        map.putIfAbsent(high, SwitchCase.of(high, deflab));
-
-        if (high < low) {
-            // "high (%d) is less than low (%d) in %s"
-            ptr.comment(M606, high, low, op);
-        }
-        int caselow = cases.getFirst().caseValue();
-        int casehigh = cases.getLast().caseValue();
-        if (caselow < low) {
-            // "lowest case value (%d) is lower than low (%d)"
-            ptr.comment(M604, caselow, low);
-            low = caselow;
-        }
-        if (casehigh > high) {
-            // "highest case value (%d) is higher than high (%d)"
-            ptr.comment(M605, casehigh, high);
-            high = casehigh;
-        }
-
-        long entryct = 1L + high - low;
-        if (entryct > MAX_TABLE_ENTRIES) {
-            // "number of entries in %s (%d) exceeds maximum possible %d"
-            String msg = M607.format(op, entryct, MAX_TABLE_ENTRIES);
-            throw new IllegalArgumentException(msg);
-        }
-        
-        switch_(op, deflab, map.values());
+        ptr.print(op,inst.lowValue(), inst.highValue());
+        switch_(inst.defaultTarget(), inst.cases());
     }
 
     @Override
@@ -250,26 +185,9 @@ public class InstructionPrinter extends AbstractOpcodeVisitor {
         ptr.print(op, type).nl();
     }
     
-    private SortedMap<Integer,SwitchCase> sortCases(Opcode opcode, List<SwitchCase> cases) {
-        SortedMap<Integer,SwitchCase> map = new TreeMap<>();
-        for (var c : cases) {
-            var previous = map.putIfAbsent(c.caseValue(), c);
-            if (previous != null) {
-                if (c.target() == previous.target()) {
-                    // "duplicate case %d in %s dropped"
-                    ptr.comment(M603, c.caseValue(), opcode);                    
-                } else {
-                    // "ambiguous case %d in %s dropped"
-                    ptr.comment(M610, c.caseValue(), opcode);
-                }
-            }
-        }
-        return map;
-    }
-    
-    private void switch_(Opcode op, Label deflab, Collection<SwitchCase> cases) {
+    private void switch_(Label deflab, Collection<SwitchCase> cases) {
         String defname = labelName(deflab);
-        ptr.print(op, ReservedWord.res_default, defname, ReservedWord.dot_array)
+        ptr.print(ReservedWord.res_default, defname, ReservedWord.dot_array)
                 .nl().incrDepth();
         long next = Integer.MIN_VALUE;
         for (SwitchCase c : cases) {

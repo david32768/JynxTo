@@ -15,8 +15,6 @@ import java.lang.classfile.attribute.SignatureAttribute;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.TypeAnnotation;
 
-import java.lang.constant.ClassDesc;
-
 import static com.github.david32768.jynxfree.jynx.Global.OPTION;
 import static com.github.david32768.jynxfree.jynx.GlobalOption.SKIP_STACK;
 import static com.github.david32768.jynxto.my.Message.M616;
@@ -32,14 +30,10 @@ import com.github.david32768.jynxto.jynx.AccessName;
 public class MethodPrinter {
     
     private final JynxPrinter ptr;
-
-    private final ClassDesc classDesc;
-    
     private CodeAttribute codeAttribute;
 
-    MethodPrinter(JynxPrinter ptr, ClassDesc classDesc) {
+    MethodPrinter(JynxPrinter ptr) {
         this.ptr = ptr.copy();
-        this.classDesc = classDesc;
     }
 
     void process(MethodModel mm) {
@@ -54,7 +48,7 @@ public class MethodPrinter {
         }
         var cm = mm.code();
         if (cm.isPresent()) {
-            StackMap stackmap = StackMap.of(classDesc,mm, codeAttribute);
+            StackMap stackmap = StackMap.of(mm);
             CodePrinter cp = new CodePrinter(ptr, stackmap, !OPTION(SKIP_STACK));
             cp.process(cm.get(), codeAttribute);
         }

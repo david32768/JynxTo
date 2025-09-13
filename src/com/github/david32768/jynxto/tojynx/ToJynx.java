@@ -10,6 +10,7 @@ import static com.github.david32768.jynxto.my.Message.M621;
 import com.github.david32768.jynxfree.jvm.JvmVersion;
 import com.github.david32768.jynxfree.jynx.Global;
 import com.github.david32768.jynxfree.jynx.GlobalOption;
+import com.github.david32768.jynxfree.jynx.MainOption;
 import com.github.david32768.jynxfree.transform.ClassModels;
 import com.github.david32768.jynxfree.transform.Transforms;
 
@@ -23,11 +24,14 @@ public class ToJynx {
             System.err.println(debug);
         }
         boolean hasStackMap = ClassModels.hasStackMap(cm);        
-        if (!hasStackMap && !Global.OPTION(GlobalOption.SKIP_FRAMES)) {
+        if (OPTION(GlobalOption.UPGRADE_TO_V7)) {
+            var upgrade = MainOption.UPGRADE.mainOptionService();
+            byte[] smbytes = upgrade.callToBytes(cm);
+            cm =  classfile.parse(smbytes);
+            hasStackMap = true;
+        } else if (!hasStackMap && !Global.OPTION(GlobalOption.SKIP_FRAMES)) {
             try {
-                byte[] smbytes = OPTION(GlobalOption.UPGRADE_TO_V6)?
-                        Transforms.upgradeToAtLeastV6(classfile, cm):
-                        Transforms.addStackMap(classfile, cm);
+                byte[] smbytes= Transforms.addStackMap(classfile, cm);
                 cm =  classfile.parse(smbytes);
                 hasStackMap = true;
             } catch (UnsupportedOperationException | IllegalArgumentException ex) { 
@@ -41,7 +45,8 @@ public class ToJynx {
             version = JvmVersion.V1_6;
         }
         toJynx(pw, cm, version);
-	return true;
+        String classname = cm.thisClass().asInternalName();
+        return Global.END_MESSAGES(classname);
     }
 
     private static ClassFile classFile() {
