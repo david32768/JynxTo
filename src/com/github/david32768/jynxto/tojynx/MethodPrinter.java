@@ -23,6 +23,7 @@ import com.github.david32768.jynxfree.classfile.StackMap;
 import com.github.david32768.jynxfree.jvm.Context;
 import com.github.david32768.jynxfree.jynx.Directive;
 import com.github.david32768.jynxfree.jynx.ReservedWord;
+import com.github.david32768.jynxfree.transform.SlotKind;
 
 import com.github.david32768.jynxto.jynx.AccessName;
 
@@ -50,7 +51,7 @@ public class MethodPrinter {
         if (cm.isPresent()) {
             StackMap stackmap = StackMap.of(mm);
             CodePrinter cp = new CodePrinter(ptr, stackmap, !OPTION(SKIP_STACK));
-            cp.process(cm.get(), codeAttribute);
+            cp.process(cm.get(), codeAttribute, SlotKind.ofParameters(mm));
         }
         ptr.decrDepth().print(Directive.end_method).nl();
     }

@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 import static com.github.david32768.jynxfree.jynx.Directive.dir_limit;
 import static com.github.david32768.jynxfree.jynx.Global.JVM_VERSION;
@@ -43,6 +44,7 @@ import static com.github.david32768.jynxto.my.Message.M614;
 import static com.github.david32768.jynxto.my.Message.M615;
 
 
+import com.github.david32768.jynxfree.classfile.Instructions;
 import com.github.david32768.jynxfree.classfile.InstructionVisitor;
 import com.github.david32768.jynxfree.classfile.StackChecker;
 import com.github.david32768.jynxfree.classfile.StackMap;
@@ -54,6 +56,7 @@ import com.github.david32768.jynxfree.jynx.Global;
 import com.github.david32768.jynxfree.jynx.GlobalOption;
 import com.github.david32768.jynxfree.jynx.LogIllegalArgumentException;
 import com.github.david32768.jynxfree.jynx.ReservedWord;
+import com.github.david32768.jynxfree.transform.SlotKind;
 
 public class CodePrinter {
 
@@ -80,6 +83,7 @@ public class CodePrinter {
     private int nextlab;
     private int handlerIndex;
     private LocalVariable[] localTable; 
+    private int maxslot;
     
     CodePrinter(JynxPrinter ptr, StackMap stackmap, boolean printstack) {
         this.ptr = ptr.copy();
@@ -101,6 +105,7 @@ public class CodePrinter {
         this.nextlab = 0;
         this.handlerIndex = 0;
         this.localTable = null;
+        this.maxslot = 0;
     }
 
     private String labelName(Label label) {
@@ -111,29 +116,35 @@ public class CodePrinter {
         return "@L" + nextlab++;
     }
     
-    void process(CodeModel cm, CodeAttribute codeAttribute) {
+    void process(CodeModel cm, CodeAttribute codeAttribute, List<SlotKind> parmslots) {
         assert codeAttribute != null;
 
         if (JVM_VERSION().supports(Feature.subroutines)) {
             checker.setJsrLabels(cm.elementList());
         }
         ptr.incrDepth().incrDepth();
-        localTable = new LocalVariable[codeAttribute.maxLocals()];
+        int codelocals = codeAttribute.maxLocals();
+        localTable = new LocalVariable[codelocals];
+        maxslot = parmslots.size();
         process(cm.attributes(), cm.elementList());
         ptr.decrDepth().decrDepth();
+        checkStackLocal(res_locals, maxslot, codelocals);
+        ptr.print(dir_limit, res_locals, codelocals).nl();
         int mystack = checker.maxStack();
-        ptr.print(dir_limit, res_locals, codeAttribute.maxLocals()).nl();
         int codestack = codeAttribute.maxStack();
-        if (codestack > mystack) {
-            // "value required (%d) for %s is less than limit value (%d); %d used"
-            ptr.comment(M193, mystack, res_stack, codestack, mystack);
-        } else if (codestack < mystack) {
-            // "value required (%d) for %s is more than limit value (%d); %d used"
-            ptr.comment(M22, mystack, res_stack, codestack, mystack);
-        }
-        ptr.print(dir_limit, res_stack, mystack).nl();
+        checkStackLocal(res_stack, mystack, codestack);
+        ptr.print(dir_limit, res_stack, codestack).nl();
     }
 
+    private void checkStackLocal(ReservedWord rw, int myvalue, int codevalue) {
+        if (codevalue > myvalue) {
+            // "value required (%d) for %s is less than limit value (%d); %d used"
+            ptr.comment(M193, myvalue, rw, codevalue, codevalue);
+        } else if (codevalue < myvalue) {
+            // "value required (%d) for %s is more than limit value (%d); %d used"
+            ptr.comment(M22, myvalue, rw, codevalue, myvalue);
+        } 
+    }
     
     public static void printElements(Consumer<String> consumer, List<CodeElement> elements) {
         var ptr = new JynxPrinter(consumer);
@@ -420,13 +431,19 @@ public class CodePrinter {
         var instptr = new InstructionPrinter(ptr, this::labelName);
         InstructionVisitor.visit(instptr, instruction);
         ptr.incrDepth();
-        if (printStack) {
-            LocalVariable lv = switch(instruction) {
-                case LoadInstruction ldinst -> localTable[ldinst.slot()];
-                case StoreInstruction stinst -> localTable[stinst.slot()];
-                case IncrementInstruction incinst -> localTable[incinst.slot()];
-                default -> null;
+        Optional<Integer> slot = Instructions.slot(instruction);
+        if (slot.isPresent()) {
+            int slotsz = switch(instruction) {
+                case LoadInstruction ldinst -> ldinst.typeKind().slotSize();
+                case StoreInstruction stinst -> stinst.typeKind().slotSize();
+                case IncrementInstruction _ -> 1;
+                case DiscontinuedInstruction.RetInstruction _ -> 1;
+                default -> throw new AssertionError();
             };
+            maxslot = Math.max(maxslot, slot.get() + slotsz);
+        }
+        if (printStack && slot.isPresent()) {
+            LocalVariable lv = localTable[slot.get()];
             if (lv != null) {
                 // "slot %d name = %s, type = %s"
                 ptr.comment(M613, lv.slot(), lv.name(), lv.type().stringValue());

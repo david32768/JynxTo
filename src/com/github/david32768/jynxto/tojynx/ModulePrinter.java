@@ -35,7 +35,7 @@ public class ModulePrinter extends ClassHeaderPrinter {
             String name = attribute.attributeName().stringValue();
             var standard = StandardAttribute.getInstance(name);
             if (standard != null && standard.inContext(Context.CLASS) && standard.inContext(Context.MODULE)) {
-                processClassAttribute(attribute);
+                processClassAttribute(attribute, cm.constantPool());
             } else {
                 moduleAttributes.put(name,attribute);
             }                

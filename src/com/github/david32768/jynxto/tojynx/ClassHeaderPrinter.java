@@ -4,22 +4,21 @@ import java.lang.classfile.attribute.*;
 
 import java.lang.classfile.Attribute;
 import java.lang.classfile.ClassModel;
-import java.lang.classfile.constantpool.Utf8Entry;
+import java.lang.classfile.constantpool.ConstantPool;
 import java.lang.classfile.TypeAnnotation;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import static com.github.david32768.jynxfree.jynx.Directive.*;
 
-import static com.github.david32768.jynxfree.jynx.Global.OPTION;
-import static com.github.david32768.jynxfree.jynx.GlobalOption.VALHALLA;
 
 import com.github.david32768.jynxfree.jvm.Context;
 import com.github.david32768.jynxfree.jvm.JvmVersion;
 import com.github.david32768.jynxfree.jynx.ReservedWord;
 
+import com.github.david32768.jynxto.jynx.classfile.CustomLoadableDescriptorsAttribute;
 import com.github.david32768.jynxto.jynx.DirectiveAccessName;
 
 public class ClassHeaderPrinter {
@@ -38,36 +37,16 @@ public class ClassHeaderPrinter {
         return List.copyOf(components);
     }
 
-    private static final String LOADABLE = "LoadableDescriptors";
-    
     void process(ClassModel cm) {
         ptr.incrDepth();
         processHeader(cm);
         for (var attribute : cm.attributes()) {
-            if (OPTION(VALHALLA)
-                    && attribute instanceof UnknownAttribute uattr
-                    && uattr.attributeName().stringValue().equals(LOADABLE)) {
-                ptr.print(";", LOADABLE, ReservedWord.dot_array).nl()
-                        .incrDepth();
-                var cp = cm.constantPool();
-                var bb = ByteBuffer.wrap(uattr.contents());
-                int ct = bb.getShort();
-                while (bb.hasRemaining()) {
-                    int index = bb.getShort();
-                    Utf8Entry klass = cp.entryByIndex(index, Utf8Entry.class);
-                    ptr.print(";",klass).nl();
-                    --ct;
-                }
-                assert ct == 0;
-                ptr.decrDepth()
-                        .print(";", end_array).nl();
-            }
-            processClassAttribute(attribute);            
+            processClassAttribute(attribute, cm.constantPool());
         }
         ptr.decrDepth();
     }
     
-    protected void processClassAttribute(Attribute<?> attribute) {
+    protected void processClassAttribute(Attribute<?> attribute, ConstantPool pool) {
         switch(attribute) {
             case SourceFileAttribute attr -> {
                 ptr.print(dir_source, attr.sourceFile()).nl();
@@ -147,9 +126,26 @@ public class ClassHeaderPrinter {
             }
             case BootstrapMethodsAttribute _ -> {}
             default -> {
-                UnknownAttributes.process(ptr, attribute, Context.CLASS);
+                if (CustomLoadableDescriptorsAttribute.is(attribute)) {
+                    processLoadableDescriptors(attribute, pool);
+                } else {           
+                    // default
+                    UnknownAttributes.process(ptr, attribute, Context.CLASS);
+                }
             }
         }
+    }
+
+    private void processLoadableDescriptors(Attribute<?> attribute, ConstantPool pool) { 
+        Objects.requireNonNull(attribute);
+        var attr = CustomLoadableDescriptorsAttribute.of(attribute, pool);
+        ptr.print(dir_descriptors, ReservedWord.dot_array).nl()
+                .incrDepth();
+        for (var item: attr.stringDescriptors()) {
+            ptr.print(item).nl();
+        }
+        ptr.decrDepth()
+                .print(end_array).nl();        
     }
     
     private void processHeader(ClassModel cm) {

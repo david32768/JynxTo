@@ -29,18 +29,18 @@ public record DirectiveAccessName(Directive dir,
     public static DirectiveAccessName of(InnerClassInfo inner, JvmVersion jvmVersion) {
         var accessName = AccessName.ofInner(inner);
         var flags = accessName.flags();
-        ClassType classtype = ClassType.from(flags);
+        ClassType classtype = ClassType.from(flags, jvmVersion);
         flags.removeAll(classtype.getMustHave4Inner(jvmVersion));
         return new DirectiveAccessName(classtype.getInnerDir(), flags, accessName.optionalName());        
     }    
 
-    private static String PACKAGE_INFO = "/package-info";
+    private static final String PACKAGE_INFO = "/package-info";
     
     public static DirectiveAccessName of(ClassModel cm, JvmVersion jvmVersion) {
         var accessName = AccessName.ofClass(cm);
         var flags = accessName.flags();
         var name = accessName.optionalName().orElse(null);
-        ClassType classtype = ClassType.from(flags);
+        ClassType classtype = ClassType.from(flags, jvmVersion);
         if (classtype == ClassType.INTERFACE && name.toString().endsWith(PACKAGE_INFO)) {
             classtype = ClassType.PACKAGE;
             name = name.subSequence(0, name.length() - PACKAGE_INFO.length());

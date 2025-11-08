@@ -23,7 +23,6 @@ public enum Message implements JynxMessage {
     M616(BLANK,"%s attribute is present but empty"),
     M621(INFO,"%s not actioned as exception occured: %s"),
 
-
     M911(ERROR,"indent depth would be below lower limit %d"),
     ;
 

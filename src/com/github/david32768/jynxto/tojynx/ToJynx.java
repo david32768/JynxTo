@@ -19,10 +19,6 @@ public class ToJynx {
     public static boolean toJynx(byte[] bytes, PrintWriter pw) {
         ClassFile classfile = classFile();
         ClassModel cm = classfile.parse(bytes);
-        if (Global.OPTION(GlobalOption.DEBUG)) {
-            var debug = cm.toDebugString();
-            System.err.println(debug);
-        }
         boolean hasStackMap = ClassModels.hasStackMap(cm);        
         if (OPTION(GlobalOption.UPGRADE_TO_V7)) {
             var upgrade = MainOption.UPGRADE.mainOptionService();
