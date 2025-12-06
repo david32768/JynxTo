@@ -20,9 +20,9 @@ import java.util.Objects;
 import java.util.Optional;
 
 import com.github.david32768.jynxfree.jvm.AccessFlag;
-import com.github.david32768.jynxfree.jvm.Constants;
 import com.github.david32768.jynxfree.jvm.Context;
 import com.github.david32768.jynxfree.jynx.Global;
+import com.github.david32768.jynxfree.jynx.NameDesc;
 
 public record AccessName(EnumSet<AccessFlag> flags, Optional<? extends CharSequence> optionalName) {
 
@@ -73,7 +73,7 @@ public record AccessName(EnumSet<AccessFlag> flags, Optional<? extends CharSeque
     }
 
     public static AccessName ofMethod(MethodModel mm) {
-        Context context = Constants.CLASS_INIT_NAME.equalsString(mm.methodName().stringValue())?
+        Context context = NameDesc.INIT_NAME.isValid(mm.methodName().stringValue())?
                 Context.INIT_METHOD
                 : Context.METHOD;
         var flags = flagsInContext(mm, mm.flags().flagsMask(), context);
