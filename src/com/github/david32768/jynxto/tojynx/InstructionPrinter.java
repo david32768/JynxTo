@@ -70,10 +70,11 @@ public class InstructionPrinter extends AbstractOpcodeVisitor {
             case ConstantInstruction.LoadConstantInstruction _ -> {
                 var type = inst.constantValue();
                 ptr.print(op);
-                if (type instanceof String str) {
-                    ptr.printQuoted(str);
-                } else {
-                    ptr.print(type);
+                switch(type) {
+                    case String str -> ptr.printQuoted(str);
+                    case Float f -> ptr.print(type, ';', f.toString());
+                    case Double d -> ptr.print(type, ';', d.toString());
+                    default -> ptr.print(type);
                 }
                 ptr.nl();
             }

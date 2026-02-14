@@ -308,8 +308,10 @@ public class CodePrinter {
         String name = labelName(label) + ":";
         if (checker.isJsrLabel(label)) {
             ptr.decrDepth().print(name, "; subroutine", checker.stackAsString());
-        } else {
+        } else if (printStack) {
             ptr.decrDepth().print(name, checker.stackAsDescriptor());
+        } else {
+            ptr.decrDepth().print(name);
         }
         if (printStack) {
             ptr.print(bciComment());        

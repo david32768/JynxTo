@@ -177,7 +177,7 @@ public class JynxPrinter {
     }
 
     public JynxPrinter printQuoted(String str) {
-        printString(StringUtil.QuoteEscape(str));
+        printString(StringUtil.quoteEscape(str));
         return this;
     }
     
@@ -282,7 +282,7 @@ public class JynxPrinter {
                 return StringUtil.escapeName(string);
             }
             case QUOTED -> {
-                return StringUtil.QuoteEscape(string);
+                return StringUtil.quoteEscape(string);
             }
             case LABEL -> {
                 return string;

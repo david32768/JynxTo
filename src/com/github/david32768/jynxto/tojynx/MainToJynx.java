@@ -16,6 +16,11 @@ public class MainToJynx implements MainOptionService {
     public MainOption main() {
         return MainOption.DISASSEMBLY;
     }
+    
+    @Override
+    public String version() {
+        return "0.25.2";
+    }
 
     @Override
     public boolean call(PrintWriter pw, String fname) {
