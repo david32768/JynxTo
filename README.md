@@ -3,7 +3,7 @@
 
 ## JynxTo
 
-Requires Java V24
+Requires Java V25
 
 Uses java.lang.classfile to produce Jynx file from Java class file.
 
@@ -45,3 +45,4 @@ and no StackMap is present then an empty stack is assumed.
 However a stackmap will be generated provided that
  no JSR or RET is present in the class methods
  and option --SKIP-FRAMES is not specified.
+
