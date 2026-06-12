@@ -26,9 +26,12 @@ import java.lang.constant.DynamicCallSiteDesc;
 import java.util.Collection;
 import java.util.function.Function;
 
+import static com.github.david32768.jynxfree.jynx.Global.OPTION;
+
 import com.github.david32768.jynxfree.classfile.AbstractOpcodeVisitor;
 import com.github.david32768.jynxfree.jvm.NumType;
 import com.github.david32768.jynxfree.jynx.Directive;
+import com.github.david32768.jynxfree.jynx.GlobalOption;
 import com.github.david32768.jynxfree.jynx.ReservedWord;
 
 public class InstructionPrinter extends AbstractOpcodeVisitor {
@@ -59,6 +62,9 @@ public class InstructionPrinter extends AbstractOpcodeVisitor {
 
     @Override
     public void constant(Opcode op, ConstantInstruction inst) {
+        if (op == Opcode.LDC_W && OPTION(GlobalOption.LDC_ONLY)) {
+            op = Opcode.LDC;
+        }
         switch(inst) {
             case ConstantInstruction.IntrinsicConstantInstruction _ -> {
                 ptr.print(op).nl();

@@ -1,7 +1,4 @@
-# Jynx
-[Jynx(bird)](https://en.wikipedia.org/wiki/Wryneck)
 
-## JynxTo
 
 Requires Java V25
 
@@ -45,4 +42,3 @@ and no StackMap is present then an empty stack is assumed.
 However a stackmap will be generated provided that
  no JSR or RET is present in the class methods
  and option --SKIP-FRAMES is not specified.
-
